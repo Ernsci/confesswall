@@ -595,6 +595,24 @@ a:focus-visible {
   color: #a98b97;
 }
 
+.fb-link {
+  display: inline-block;
+  margin-top: 6px;
+  margin-left: 10px;
+  font-family: "Caveat", cursive;
+  font-size: 1.22rem;
+  color: var(--rose);
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(217, 79, 116, 0.5);
+  transition: color 0.15s ease, border-color 0.15s ease, text-shadow 0.15s ease;
+}
+
+.fb-link:hover {
+  color: var(--gold);
+  border-color: rgba(201, 151, 63, 0.6);
+  text-shadow: 0 0 12px rgba(217, 79, 116, 0.4);
+}
+
 @keyframes rise {
   from {
     opacity: 0;
