@@ -46,7 +46,7 @@ module.exports = {
 
     bisaya: [
       "yawa", "boang", "buang", "bugok", "atay", "bilat", "puday",
-      "otin", "iyot", "iyutan", "bayot"
+      "otin", "iyot", "iyutan", "bayot", "oten"
     ]
   },
 

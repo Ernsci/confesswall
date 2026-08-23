@@ -128,6 +128,21 @@
     .play-btn:hover { border-color: #98a3ba; color: #dfe4ee; background: rgba(148, 158, 180, 0.08); }
     button:focus-visible { outline: 3px solid #98a3ba; outline-offset: 3px; }
 
+    .sound-hint {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 5px 14px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
+      color: #c9cfdd;
+      background: rgba(8, 8, 13, 0.7);
+      border: 1px solid rgba(148, 158, 180, 0.3);
+    }
+    .sound-hint.hidden { display: none; }
+
     .caption {
       margin-top: 1.7rem;
       font-family: "Caveat", cursive;
@@ -164,8 +179,9 @@
 
     <div class="video-frame">
       <video id="creator-video" src="/video.mp4" playsinline preload="auto"></video>
+      <div class="sound-hint hidden" id="sound-hint">&#128266; tap for sound</div>
       <div class="overlay hidden" id="play-overlay">
-        <button type="button" class="play-btn" id="play-btn">&#9654;&nbsp; play with sound</button>
+        <button type="button" class="play-btn" id="play-btn">&#9654;&nbsp; play video</button>
       </div>
     </div>
 
@@ -178,8 +194,18 @@
     const video = document.getElementById('creator-video');
     const overlay = document.getElementById('play-overlay');
     const playBtn = document.getElementById('play-btn');
+    const soundHint = document.getElementById('sound-hint');
 
     video.volume = 1;
+
+    // first interaction anywhere -> restore sound
+    function enableSound() {
+      video.muted = false;
+      soundHint.classList.add('hidden');
+    }
+    ['pointerdown', 'touchstart', 'keydown'].forEach(ev =>
+      window.addEventListener(ev, enableSound, { once: true, passive: true })
+    );
 
     video.addEventListener('error', () => {
       const note = document.createElement('p');
@@ -187,17 +213,20 @@
       note.textContent = '(video.mp4 is missing — drop it into the public folder)';
       video.replaceWith(note);
       overlay.remove();
+      soundHint.remove();
     });
 
-    // try autoplay with sound; browsers may refuse until first interaction
-    const attempt = video.play();
-    if (attempt) {
-      attempt.then(() => {}).catch(() => overlay.classList.remove('hidden'));
-    } else {
-      overlay.classList.remove('hidden');
-    }
+    // 1) try full autoplay with sound; if the browser refuses,
+    // 2) start muted immediately (always allowed), hinting for a tap;
+    // 3) only if even muted playback is blocked, show the play button.
+    video.play().catch(() => {
+      video.muted = true;
+      soundHint.classList.remove('hidden');
+      video.play().catch(() => overlay.classList.remove('hidden'));
+    });
 
     playBtn.addEventListener('click', () => {
+      video.muted = false;
       video.play().then(() => overlay.classList.add('hidden')).catch(() => {});
     });
   </script>
