@@ -408,6 +408,38 @@ app.get('/creator', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/creator.html'));
 });
 
+app.get('/wall', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/wall.html'));
+});
+
+// Public wall feed — posted letters only. Sender names are deliberately NOT selected.
+app.get('/api/wall', async (req, res) => {
+  const limit = Math.min(Math.max(Number(req.query.limit) || 30, 1), 60);
+  const offset = Math.max(Number(req.query.offset) || 0, 0);
+
+  const { data, error } = await supabase
+    .from("confessions")
+    .select("id, recipient_name, message, date_display")
+    .eq("posted", true)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error("Failed to load wall:", error.message);
+    return res.status(500).json({ error: "Could not load the wall." });
+  }
+
+  res.json({
+    items: (data || []).map(r => ({
+      id: r.id,
+      to: r.recipient_name || "Someone special",
+      message: r.message,
+      date: r.date_display
+    })),
+    hasMore: (data || []).length === limit
+  });
+});
+
 app.get('/admin/data', async (req, res) => {
   if (!adminAuth(req, res)) return;
   const { data, error } = await supabase

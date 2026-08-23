@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Wall · Confess Wall</title>
+  <meta name="theme-color" content="#150d13">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap" rel="stylesheet">
+  <script src="letter-renderer.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 2.5rem) 4rem;
+      font-family: "Fraunces", Georgia, serif;
+      color: #f5e9dc;
+      background:
+        radial-gradient(1000px 700px at 75% -10%, rgba(217, 79, 116, 0.15), transparent 60%),
+        radial-gradient(800px 600px at 5% 110%, rgba(201, 151, 63, 0.08), transparent 55%),
+        linear-gradient(175deg, #241320, #150d13 65%);
+    }
+
+    .head {
+      max-width: 1200px;
+      margin: 0 auto 2.2rem;
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      flex-wrap: wrap;
+      animation: rise 0.6s ease both;
+    }
+    h1 {
+      margin: 0;
+      font-weight: 350;
+      font-size: clamp(1.8rem, 4.5vw, 2.5rem);
+      letter-spacing: -0.01em;
+    }
+    h1 em { color: var(--rose, #d94f74); font-style: italic; font-weight: 500; }
+    .brand { color: #c9973f; font-size: 0.85rem; letter-spacing: 0.28em; text-transform: uppercase; }
+    .links { margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
+    .nav-pill {
+      padding: 7px 17px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.14);
+      color: #a98b97;
+      text-decoration: none;
+      font-size: 0.88rem;
+      transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+    .nav-pill:hover { color: #f5e9dc; border-color: rgba(217,79,116,0.55); background: rgba(217,79,116,0.1); }
+
+    .sub {
+      max-width: 1200px;
+      margin: -1.2rem auto 2rem;
+      font-family: "Caveat", cursive;
+      font-size: 1.25rem;
+      color: #a98b97;
+      animation: rise 0.6s 0.06s ease both;
+    }
+
+    .grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+      gap: 1.7rem;
+    }
+
+    .cell { animation: rise 0.5s ease both; }
+    .cell canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 14px;
+      box-shadow: 0 22px 50px rgba(8, 3, 10, 0.55);
+    }
+    .card-actions { display: flex; gap: 8px; justify-content: center; margin-top: 0.65rem; }
+    .mini-btn {
+      padding: 5px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.16);
+      color: #a98b97;
+      font-family: inherit;
+      font-size: 0.78rem;
+      transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+    .mini-btn:hover { color: #f5e9dc; border-color: rgba(217,79,116,0.5); background: rgba(217,79,116,0.1); }
+    button.mini-btn:focus-visible, a:focus-visible { outline: 3px solid #d94f74; outline-offset: 3px; }
+
+    /* loading skeleton */
+    .skel {
+      aspect-ratio: 1;
+      border-radius: 14px;
+      background: linear-gradient(110deg, #1d1420 30%, #261a2c 45%, #1d1420 60%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite linear;
+    }
+    @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+    .empty, .error-note {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-family: "Caveat", cursive;
+      font-size: 1.6rem;
+      color: #a98b97;
+      padding: 3rem 1rem;
+      border: 1.5px dashed rgba(255,255,255,0.13);
+      border-radius: 16px;
+    }
+    .error-note { color: #ff9db2; }
+
+    .more-row { max-width: 1200px; margin: 2rem auto 0; text-align: center; }
+    .more-btn {
+      padding: 0.75rem 2rem;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(160deg, #b52a52, #9e1b40);
+      color: #fff7ee;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+    .more-btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
+    .more-btn[hidden] { display: none; }
+
+    @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="head">
+    <h1>the <em>wall</em></h1>
+    <span class="brand">𝐈𝐓 𝐊𝐍𝐎𝐖𝐒</span>
+    <div class="links">
+      <a class="nav-pill" href="/">write one ♥</a>
+      <a class="nav-pill" href="/creator">the creator</a>
+    </div>
+  </div>
+  <p class="sub">letters that were brave enough to be posted &#183; names are never shown</p>
+
+  <div class="grid" id="grid">
+    <div class="skel"></div>
+    <div class="skel"></div>
+    <div class="skel"></div>
+    <div class="skel"></div>
+  </div>
+
+  <div class="more-row">
+    <button type="button" class="more-btn" id="load-more" hidden>Load more letters</button>
+  </div>
+
+  <script>
+    const grid = document.getElementById('grid');
+    const loadMoreBtn = document.getElementById('load-more');
+
+    const PAGE = 30;
+    let offset = 0;
+    let hasMore = false;
+    let busy = false;
+
+    function clearSkeletons() {
+      grid.querySelectorAll('.skel').forEach(el => el.remove());
+    }
+
+    function note(text, cls) {
+      const p = document.createElement('p');
+      p.className = cls || 'empty';
+      p.textContent = text;
+      grid.appendChild(p);
+    }
+
+    async function canvasToBlob(canvas) {
+      return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png'));
+    }
+
+    async function saveCard(canvas, id) {
+      const blob = await canvasToBlob(canvas);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `wall-letter-${id}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    }
+
+    async function shareCard(canvas, id) {
+      try {
+        const blob = await canvasToBlob(canvas);
+        const file = new File([blob], 'confess-wall.png', { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'Confess Wall \u2665' });
+        } else {
+          await saveCard(canvas, id);
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+        await saveCard(canvas, id);
+      }
+    }
+
+    function buildCell(item, indexInBatch) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+
+      const placeholder = document.createElement('div');
+      placeholder.className = 'skel';
+      cell.appendChild(placeholder);
+
+      const actions = document.createElement('div');
+      actions.className = 'card-actions';
+      actions.style.visibility = 'hidden';
+
+      const saveBtn = document.createElement('button');
+      saveBtn.type = 'button';
+      saveBtn.className = 'mini-btn';
+      saveBtn.textContent = '\u2B07 save';
+
+      const shareBtn = document.createElement('button');
+      shareBtn.type = 'button';
+      shareBtn.className = 'mini-btn';
+      shareBtn.textContent = '\u2B06 send';
+
+      actions.append(saveBtn, shareBtn);
+      cell.appendChild(actions);
+
+      let painted = false;
+      async function paint() {
+        if (painted) return;
+        painted = true;
+        try {
+          const raw = await LetterArt.renderLetterCanvas(item, { scale: 1.5 });
+          const square = LetterArt.composeSquare(raw, { maxSide: 1024 });
+          square.style.width = '100%';
+          square.style.height = 'auto';
+          square.setAttribute('role', 'img');
+          square.setAttribute('aria-label', 'Anonymous letter for ' + (item.to || 'someone special'));
+          placeholder.replaceWith(square);
+
+          saveBtn.addEventListener('click', () => saveCard(square, item.id));
+          shareBtn.addEventListener('click', () => shareCard(square, item.id));
+          actions.style.visibility = 'visible';
+        } catch {
+          const errEl = document.createElement('p');
+          errEl.className = 'error-note';
+          errEl.textContent = 'could not render this letter';
+          placeholder.replaceWith(errEl);
+        }
+      }
+
+      if ('IntersectionObserver' in window) {
+        const io = new IntersectionObserver(entries => {
+          entries.forEach(e => { if (e.isIntersecting) { io.unobserve(cell); paint(); } });
+        }, { rootMargin: '300px' });
+        io.observe(cell);
+      } else {
+        paint();
+      }
+
+      return cell;
+    }
+
+    async function loadPage() {
+      if (busy) return;
+      busy = true;
+      loadMoreBtn.disabled = true;
+
+      // skeletons only on first page
+      if (offset === 0) {
+        grid.innerHTML = '';
+        for (let i = 0; i < 4; i++) {
+          const skel = document.createElement('div');
+          skel.className = 'skel';
+          grid.appendChild(skel);
+        }
+      }
+
+      try {
+        const res = await fetch(`/api/wall?limit=${PAGE}&offset=${offset}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+
+        clearSkeletons();
+
+        if (offset === 0 && (!data.items || data.items.length === 0)) {
+          clearSkeletons();
+          note('nothing has been posted yet. be the first brave heart \u2665');
+          loadMoreBtn.hidden = true;
+          return;
+        }
+
+        data.items.forEach((item, idx) => grid.appendChild(buildCell(item, idx)));
+        offset += data.items.length;
+        hasMore = !!data.hasMore;
+        loadMoreBtn.hidden = !hasMore;
+      } catch {
+        clearSkeletons();
+        if (offset === 0) note('could not load the wall right now.', 'error-note');
+        else showToastLike('Could not load more letters.');
+      } finally {
+        busy = false;
+        loadMoreBtn.disabled = false;
+      }
+    }
+
+    function showToastLike(msg) {
+      const t = document.createElement('div');
+      t.textContent = msg;
+      t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#24182b;color:#f5e9dc;border:1px solid rgba(217,79,116,.5);padding:10px 20px;border-radius:999px;font-size:.9rem;z-index:99;';
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 2400);
+    }
+
+    loadMoreBtn.addEventListener('click', loadPage);
+    loadPage();
+  </script>
+</body>
+</html>
