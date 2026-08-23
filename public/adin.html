@@ -18,16 +18,6 @@
     body { font-family: "Caveat", cursive, sans-serif; background: var(--admin-bg); color: var(--admin-text); margin: 0; min-height: 100vh; }
     a { color: var(--admin-accent); text-decoration: none; }
     a:hover { color: var(--admin-accent-hover); }
-    .auth-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
-    .auth-card { background: var(--admin-card); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 2.5rem 2rem; max-width: 380px; width: 100%; box-shadow: 0 25px 50px rgba(8,3,10,0.55); animation: fadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-    .auth-card h2 { text-align: center; margin: 0 0 1.5rem; font-family: "Fraunces", Georgia, serif; font-size: 1.75rem; color: var(--admin-accent); letter-spacing: -0.02em; }
-    .auth-card p { text-align: center; color: var(--admin-text-muted); margin: 0 0 1.8rem; font-size: 0.92rem; }
-    .auth-card input { width: 100%; padding: 0.85rem 1rem; margin: 0 0 1rem; border: 1.5px solid rgba(55,42,38,0.32); border-radius: 8px; background: #1f162a; color: var(--admin-text); font-family: inherit; font-size: 1rem; box-sizing: border-box; transition: border-color 0.15s ease, background 0.15s ease; }
-    .auth-card input:focus { outline: none; border-color: var(--admin-accent); background: #2a2137; }
-    .auth-card button { width: 100%; padding: 0.9rem 1rem; border: none; border-radius: 999px; background: var(--admin-accent); color: #fff7ee; font-family: inherit; font-size: 1rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; margin-top: 0.5rem; transition: background 0.15s ease, transform 0.1s ease; }
-    .auth-card button:hover { background: var(--admin-accent-hover); transform: translateY(-1px); }
-    .auth-card .hint { text-align: center; margin-top: 1rem; font-size: 0.76rem; color: var(--admin-text-muted); }
     .dashboard { padding: 2rem; max-width: 1200px; margin: 0 auto; }
     .dashboard .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
     .dashboard h1 { font-family: "Fraunces", Georgia, serif; font-size: 1.8rem; margin: 0; color: var(--admin-text); }
@@ -46,21 +36,11 @@
     .export-btn { margin-top: 1.5rem; padding: 0.85rem 1.4rem; border: none; border-radius: 999px; background: var(--admin-accent); color: #fff7ee; font-family: inherit; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.15s ease, transform 0.1s ease; }
     .export-btn:hover { background: var(--admin-accent-hover); transform: translateY(-1px); }
     .export-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    @media (prefers-reduced-motion: reduce) { .auth-card { animation: none; } .export-btn { transition: none; } }
+    @media (prefers-reduced-motion: reduce) { .export-btn { transition: none; } }
   </style>
 </head>
 <body>
-  <div class="auth-screen" id="auth-screen">
-    <div class="auth-card">
-      <h2>Confess Wall Admin</h2>
-      <p>Enter password to view confessions</p>
-      <input type="password" id="admin-password" placeholder="chaddy">
-      <button id="admin-login">Login</button>
-      <p class="hint">Password: <strong>chaddy</strong></p>
-    </div>
-  </div>
-
-  <div class="dashboard" id="dashboard" style="display: none;">
+  <div class="dashboard">
     <div class="header">
       <h1>Confessions</h1>
       <div class="count" id="confession-count">0</div>
@@ -77,15 +57,12 @@
   </div>
 
   <script>
-    const CORRECT_PASSWORD = 'chaddy';
     const ADMIN_CONFESSIONS = [];
 
     const cardsGrid = document.getElementById('cards-grid');
     const confessionCount = document.getElementById('confession-count');
     const downloadPng = document.getElementById('download-png');
     const downloadAll = document.getElementById('download-all');
-    const authScreen = document.getElementById('auth-screen');
-    const dashboard = document.getElementById('dashboard');
 
     function renderConfession(cardData) {
       const safeFrom = cardData.from.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
@@ -112,26 +89,11 @@
       }
     }
 
-    document.getElementById('admin-login').addEventListener('click', () => {
-      const pw = document.getElementById('admin-password').value.trim();
-      if (pw === CORRECT_PASSWORD) {
-        fetch('/admin/data')
-          .then(r => r.json())
-          .then(data => { ADMIN_CONFESSIONS.splice(0, ADMIN_CONFESSIONS.length, ...data); renderGrid(); });
-        authScreen.style.display = 'none';
-        dashboard.style.display = 'block';
-      } else {
-        alert('Incorrect password.');
-      }
-    });
-
-    document.getElementById('logout').addEventListener('click', () => {
-      ADMIN_CONFESSIONS.splice(0, ADMIN_CONFESSIONS.length);
-      authScreen.style.display = 'block';
-      dashboard.style.display = 'none';
-      cardsGrid.innerHTML = '';
-      confessionCount.textContent = '0';
-    });
+    // Fetch confessions from server API
+    fetch('/admin/data')
+      .then(r => r.json())
+      .then(data => { ADMIN_CONFESSIONS.splice(0, ADMIN_CONFESSIONS.length, ...data); renderGrid(); })
+      .then(() => { if (ADMIN_CONFESSIONS.length > 0) { document.getElementById('confession-count').textContent = Math.min(ADMIN_CONFESSIONS.length, 20); }; });
 
     function captureGridToPNG(selector, filename) {
       const element = document.querySelector(selector);
@@ -153,12 +115,6 @@
     downloadAll.addEventListener('click', () => {
       captureGridToPNG('.cards-grid', 'all-confessions.png');
     });
-
-    // Initial fetch on page load (will show auth screen until password entered)
-    fetch('/admin/data')
-      .then(r => r.json())
-      .then(data => { ADMIN_CONFESSIONS.splice(0, ADMIN_CONFESSIONS.length, ...data); renderGrid(); })
-      .then(() => { if (ADMIN_CONFESSIONS.length > 0) { document.getElementById('auth-screen').style.display = 'none'; document.getElementById('dashboard').style.display = 'block'; }; });
-</script>
+  </script>
 </body>
 </html>

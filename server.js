@@ -12,6 +12,7 @@ const MAX_WORDS = config.maxWords;
 const RATE_LIMIT_MS = config.rateLimitMs;
 const submissions = new Map();
 const adminConfessions = [];
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'chaddy';
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
