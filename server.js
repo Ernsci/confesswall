@@ -13,73 +13,6 @@ const RATE_LIMIT_MS = config.rateLimitMs;
 const submissions = new Map();
 const adminConfessions = [];
 
-const LEET_CHARS = { "4": "a", "@": "a", "8": "b", "3": "e", "1": "i", "!": "i", "0": "o", "5": "s", "$": "s", "7": "t", "+": "t", "9": "g" };
-const SUFFIXES = ["s", "es", "ed", "ing", "er", "ers"];
-
-function normalizeText(text) {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[4@83!10$57+9]/g, (ch) => LEET_CHARS[ch])
-    .replace(/[^a-z]+/g, " ")
-    .trim();
-}
-
-const exactOnly = new Set((config.exactOnly || []).map((w) => normalizeText(w)));
-const blockedPhrases = [];
-const looseWords = [];
-const strictWords = new Set();
-
-for (const raw of Object.values(config.badWords).flat()) {
-  const word = normalizeText(raw);
-  if (!word) continue;
-  if (word.includes(" ")) {
-    blockedPhrases.push(word);
-  } else if (word.length < 3 || exactOnly.has(word) || word.length <= 4) {
-    strictWords.add(word);
-  } else {
-    looseWords.push(word);
-  }
-}
-
-function stripSuffixes(word) {
-  let current = word;
-  let previous;
-  do {
-    previous = current;
-    for (const suffix of SUFFIXES) {
-      if (current.length > 3 && current.endsWith(suffix)) {
-        current = current.slice(0, -suffix.length);
-        break;
-      }
-    }
-  } while (current !== previous);
-  return current;
-}
-
-function containsBadWord(text) {
-  const normalized = normalizeText(text);
-  if (!normalized) return false;
-
-  for (const phrase of blockedPhrases) {
-    if (normalized.includes(phrase)) return true;
-  }
-
-  for (const token of normalized.split(" ")) {
-    const collapsed = token.replace(/(.)\1+/g, "$1");
-    if (strictWords.has(token)) return true;
-    if (strictWords.has(collapsed)) return true;
-    const stemmed = stripSuffixes(collapsed);
-    if (strictWords.has(stemmed)) return true;
-    for (const word of looseWords) {
-      if (collapsed.includes(word)) return true;
-    }
-  }
-
-  return false;
-}
-
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -206,74 +139,12 @@ app.post("/api/confess", async (req, res) => {
   return res.json({ success: true });
 });
 
-app.get('/otin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/otin.html'));
+app.get('/adin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/adin.html'));
 });
 
-app.get('/admin', (req, res) => {
-  // Generate letter cards HTML from stored confessions
-  let cardsHTML = '';
-  for (const c of adminConfessions) {
-    const safeFrom = c.from.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
-    const safeMessage = c.message.replace(/&/g, '&').replace(/</g, '>').replace(/\n/g, '<br>');
-    cardsHTML += `
-      <div class="letter-card">
-        <div class="letter-header">To: ${safeFrom}</div>
-        <div class="letter-body">${safeMessage}</div>
-        <div class="letter-date">${c.date}</div>
-      </div>
-    `;
-  }
-  // Password prompt HTML
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel - Confess Wall</title>
-  <link rel="stylesheet" href="style.css">
-  <style>
-    .prompt { background: #241320; padding: 2rem; border-radius: 8px; max-width: 360px; margin: 2rem auto; }
-    .prompt input { width: 100%; padding: 0.6rem; margin-top: 0.5rem; box-sizing: border-box; }
-    .prompt button { width: 100%; margin-top: 1rem; padding: 0.6rem; }
-    .letter-grid { max-width: 800px; margin: 2rem auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
-    .letter-card { border: 1px solid var(--rose-deep); border-radius: 12px; background: linear-gradient(var(--paper), var(--paper-deep)); color: var(--ink); padding: 2rem; margin: 1rem 0; }
-    .letter-header { font-family: "Fraunces", Georgia, serif; font-size: 1.5rem; color: var(--rose); margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: -0.01em; }
-    .letter-body { font-family: "Caveat", cursive; font-size: 1rem; line-height: 1.5; margin-bottom: 0.8rem; }
-  </style>
-</head>
-<body>
-  <div class="prompt" id="password-prompt">
-    <h2>Confess Wall Admin</h2>
-    <p>Enter password:</p>
-    <input type="password" id="pwd" placeholder="chaddy">
-    <button id="login">Login</button>
-    <p id="status" style="margin-top:0.5rem;"></p>
-  </div>
-  <div class="letter-grid" id="letter-grid">
-    ${cardsHTML}
-  </div>
-  <script>
-    const correct = 'chaddy';
-    const pwdInput = document.getElementById('pwd');
-    const loginBtn = document.getElementById('login');
-    const prompt = document.getElementById('password-prompt');
-    const grid = document.getElementById('letter-grid');
-    loginBtn.addEventListener('click', () => {
-      if (pwdInput.value.trim() === correct) {
-        prompt.style.display = 'none';
-        grid.style.display = 'grid';
-      } else {
-        document.getElementById('status').textContent = 'Incorrect password.';
-      }
-    });
-    grid.style.display = 'none';
-  </script>
-</body>
-</html>
-  `;
-  res.send(html);
+app.get('/admin/data', (req, res) => {
+  res.json(adminConfessions);
 });
 
 app.listen(PORT, () => {
