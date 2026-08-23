@@ -8,7 +8,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
   <style>
     :root {
       --night-1: #150d13;
@@ -800,45 +799,165 @@
       }
     });
 
-    saveBtn.addEventListener('click', async () => {
-      if (typeof html2canvas === 'undefined') {
-        showToast('Image library still loading, try again.');
-        return;
+    // ---- native letter renderer (no html2canvas — works identically on every device) ----
+    const EXPORT_W = 640;
+    const LINE_H = 34;
+    const MAX_LINES = 150;
+
+    function wrapLines(ctx, text, maxWidth) {
+      const out = [];
+      for (const para of String(text).split('\n')) {
+        if (!para.trim()) { out.push(''); continue; }
+        let line = '';
+        for (const word of para.split(' ')) {
+          const test = line ? line + ' ' + word : word;
+          if (ctx.measureText(test).width > maxWidth && line) {
+            out.push(line);
+            line = word;
+          } else {
+            line = test;
+          }
+        }
+        out.push(line);
       }
+      return out;
+    }
+
+    async function renderLetterCanvas(c) {
+      await Promise.all([
+        document.fonts.load('italic 600 30px Fraunces'),
+        document.fonts.load('700 12px Fraunces'),
+        document.fonts.load('400 21px "Playfair Display"'),
+        document.fonts.load('13px Fraunces')
+      ]).catch(() => {});
+      try { await document.fonts.ready; } catch {}
+
+      const probe = document.createElement('canvas').getContext('2d');
+      probe.font = '400 21px "Playfair Display", Georgia, serif';
+      const lines = wrapLines(probe, c.message || ' ', 540).slice(0, MAX_LINES);
+      if ((c.message || '').length && wrapLines(probe, c.message, 540).length > MAX_LINES) {
+        lines[lines.length - 1] += ' …';
+      }
+
+      const nameLines = (() => {
+        const ctx2 = document.createElement('canvas').getContext('2d');
+        ctx2.font = 'italic 600 30px Fraunces, Georgia, serif';
+        return wrapLines(ctx2, c.to || 'Someone special', 500);
+      })();
+
+      const padX = 50;
+      const sealCy = 46;
+      const labelY = 108;
+      let y = labelY + 26 + (nameLines.length - 1) * 36;
+      const dividerY = y + 24;
+      let baseline = dividerY + 52;
+      const footY = baseline + (lines.length - 1) * LINE_H + 42;
+      const H = Math.ceil(footY + 44);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = EXPORT_W * 2;
+      canvas.height = H * 2;
+      const g = canvas.getContext('2d');
+      g.scale(2, 2);
+
+      // paper
+      const paper = g.createLinearGradient(0, 0, 0, H);
+      paper.addColorStop(0, '#fdf6ea');
+      paper.addColorStop(1, '#f3e5cd');
+      g.fillStyle = paper;
+      g.fillRect(0, 0, EXPORT_W, H);
+
+      // dashed inner frame
+      g.strokeStyle = 'rgba(55,42,38,0.24)';
+      g.lineWidth = 1.5;
+      g.setLineDash([6, 5]);
+      g.strokeRect(12.75, 12.75, EXPORT_W - 25.5, H - 25.5);
+      g.setLineDash([]);
+
+      // wax seal
+      const seal = g.createRadialGradient(EXPORT_W / 2 - 8, sealCy - 9, 4, EXPORT_W / 2, sealCy, 27);
+      seal.addColorStop(0, '#d34a70');
+      seal.addColorStop(0.58, '#9e1b40');
+      seal.addColorStop(1, '#7c1330');
+      g.fillStyle = seal;
+      g.beginPath();
+      g.ellipse(EXPORT_W / 2, sealCy, 27, 26, 0, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = 'rgba(255,233,221,0.35)';
+      g.lineWidth = 1;
+      g.beginPath();
+      g.ellipse(EXPORT_W / 2, sealCy, 21, 20, 0, 0, Math.PI * 2);
+      g.stroke();
+      g.fillStyle = '#ffe9dd';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.font = '20px serif';
+      g.fillText('\u2665', EXPORT_W / 2, sealCy + 1);
+
+      // TO label
+      g.font = '700 12px Fraunces, Georgia, serif';
+      g.fillStyle = 'rgba(109,87,76,0.95)';
+      g.fillText('T  O', EXPORT_W / 2, labelY);
+
+      // recipient
+      g.font = 'italic 600 30px Fraunces, Georgia, serif';
+      g.fillStyle = '#9c2450';
+      for (const nl of nameLines) {
+        g.fillText(nl, EXPORT_W / 2, y);
+        y += 36;
+      }
+
+      // divider
+      const div = g.createLinearGradient(EXPORT_W / 2 - 65, 0, EXPORT_W / 2 + 65, 0);
+      div.addColorStop(0, 'rgba(156,36,80,0)');
+      div.addColorStop(0.5, 'rgba(156,36,80,0.55)');
+      div.addColorStop(1, 'rgba(156,36,80,0)');
+      g.fillStyle = div;
+      g.fillRect(EXPORT_W / 2 - 65, dividerY, 130, 1.5);
+
+      // message on ruled lines
+      g.font = '400 21px "Playfair Display", Georgia, serif';
+      g.textAlign = 'left';
+      g.textBaseline = 'alphabetic';
+      for (let i = 0; i < lines.length; i++) {
+        const by = baseline + i * LINE_H;
+        g.strokeStyle = 'rgba(55,42,38,0.13)';
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(padX, by + 10);
+        g.lineTo(EXPORT_W - padX, by + 10);
+        g.stroke();
+        g.fillStyle = '#372a26';
+        g.fillText(lines[i], padX, by);
+      }
+
+      // footer
+      g.strokeStyle = 'rgba(55,42,38,0.18)';
+      g.beginPath();
+      g.moveTo(padX, footY);
+      g.lineTo(EXPORT_W - padX, footY);
+      g.stroke();
+      g.textBaseline = 'middle';
+      g.font = '13px Fraunces, Georgia, serif';
+      g.textAlign = 'left';
+      g.fillStyle = 'rgba(109,87,76,0.95)';
+      g.fillText(c.date || '', padX, footY + 22);
+      g.textAlign = 'right';
+      g.fillStyle = '#d94f74';
+      g.font = '16px serif';
+      g.fillText('\u2665', EXPORT_W - padX, footY + 22);
+
+      return canvas;
+    }
+
+    saveBtn.addEventListener('click', async () => {
       if (selected === null) return;
 
       saveBtn.disabled = true;
       showToast('Rendering your square letter \u2665');
-      document.body.classList.add('exporting');
 
-      let clone = null;
       try {
-        // capture a hidden clone so the wax seal is never clipped
-        clone = bigLetter.cloneNode(true);
-        clone.classList.add('export-mode');
-        clone.classList.add('offscreen');
-        const rect = bigLetter.getBoundingClientRect();
-        clone.style.width = Math.max(rect.width, bigLetter.offsetWidth) + 'px';
-        document.body.appendChild(clone);
-
-        // keep total pixels under mobile canvas limits (iOS ~16.7M)
-        const w = rect.width || 600;
-        const h = rect.height || 800;
-        const scale = Math.min(2, Math.sqrt(15_000_000 / (w * h)));
-        const raw = await html2canvas(clone, {
-          useCORS: true,
-          scale,
-          logging: false,
-          backgroundColor: null,
-          width: w,
-          height: h,
-          windowWidth: document.documentElement.clientWidth,
-          windowHeight: document.documentElement.clientHeight
-        });
-
-        if (!raw || !raw.width || !raw.height) {
-          throw new Error('capture was empty');
-        }
+        const raw = await renderLetterCanvas(confessions[selected]);
 
         // composite onto a 1:1 canvas (capped for mobile canvas limits)
         const pad = Math.round(Math.max(raw.width, raw.height) * 0.09);
@@ -911,7 +1030,6 @@
       } catch (err) {
         showToast('Export failed: ' + err.message);
       } finally {
-        if (clone) clone.remove();
         document.body.classList.remove('exporting');
         saveBtn.disabled = false;
       }
