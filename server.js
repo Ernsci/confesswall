@@ -14,6 +14,74 @@ const submissions = new Map();
 const adminConfessions = [];
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'chaddy';
 
+// Bad word filter
+const LEET_CHARS = { "4": "a", "@": "a", "8": "b", "3": "e", "1": "i", "!": "i", "0": "o", "5": "s", "$": "s", "7": "t", "+": "t", "9": "g" };
+const SUFFIXES = ["s", "es", "ed", "ing", "er", "ers"];
+
+function normalizeText(text) {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[4@83!10$57+9]/g, (ch) => LEET_CHARS[ch])
+    .replace(/[^a-z]+/g, " ")
+    .trim();
+}
+
+const exactOnly = new Set((config.exactOnly || []).map((w) => normalizeText(w)));
+const blockedPhrases = [];
+const looseWords = [];
+const strictWords = new Set();
+
+for (const raw of Object.values(config.badWords).flat()) {
+  const word = normalizeText(raw);
+  if (!word) continue;
+  if (word.includes(" ")) {
+    blockedPhrases.push(word);
+  } else if (word.length < 3 || exactOnly.has(word) || word.length <= 4) {
+    strictWords.add(word);
+  } else {
+    looseWords.push(word);
+  }
+}
+
+function stripSuffixes(word) {
+  let current = word;
+  let previous;
+  do {
+    previous = current;
+    for (const suffix of SUFFIXES) {
+      if (current.length > 3 && current.endsWith(suffix)) {
+        current = current.slice(0, -suffix.length);
+        break;
+      }
+    }
+  } while (current !== previous);
+  return current;
+}
+
+function containsBadWord(text) {
+  const normalized = normalizeText(text);
+  if (!normalized) return false;
+
+  for (const phrase of blockedPhrases) {
+    if (normalized.includes(phrase)) return true;
+  }
+
+  for (const token of normalized.split(" ")) {
+    const collapsed = token.replace(/(.)\1+/g, "$1");
+    if (strictWords.has(token)) return true;
+    if (strictWords.has(collapsed)) return true;
+    const stemmed = stripSuffixes(collapsed);
+    if (strictWords.has(stemmed)) return true;
+    for (const word of looseWords) {
+      if (collapsed.includes(word)) return true;
+    }
+  }
+
+  return false;
+}
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
