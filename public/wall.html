@@ -78,20 +78,6 @@
       border-radius: 14px;
       box-shadow: 0 22px 50px rgba(8, 3, 10, 0.55);
     }
-    .card-actions { display: flex; gap: 8px; justify-content: center; margin-top: 0.65rem; }
-    .mini-btn {
-      padding: 5px 14px;
-      border-radius: 999px;
-      cursor: pointer;
-      background: transparent;
-      border: 1px solid rgba(255,255,255,0.16);
-      color: #a98b97;
-      font-family: inherit;
-      font-size: 0.78rem;
-      transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-    }
-    .mini-btn:hover { color: #f5e9dc; border-color: rgba(217,79,116,0.5); background: rgba(217,79,116,0.1); }
-    button.mini-btn:focus-visible, a:focus-visible { outline: 3px solid #d94f74; outline-offset: 3px; }
 
     /* loading skeleton */
     .skel {
@@ -180,59 +166,13 @@
       grid.appendChild(p);
     }
 
-    async function canvasToBlob(canvas) {
-      return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png'));
-    }
-
-    async function saveCard(canvas, id) {
-      const blob = await canvasToBlob(canvas);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `wall-letter-${id}.png`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
-    }
-
-    async function shareCard(canvas, id) {
-      try {
-        const blob = await canvasToBlob(canvas);
-        const file = new File([blob], 'confess-wall.png', { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: 'Confess Wall \u2665' });
-        } else {
-          await saveCard(canvas, id);
-        }
-      } catch (err) {
-        if (err && err.name === 'AbortError') return;
-        await saveCard(canvas, id);
-      }
-    }
-
-    function buildCell(item, indexInBatch) {
+    function buildCell(item) {
       const cell = document.createElement('div');
       cell.className = 'cell';
 
       const placeholder = document.createElement('div');
       placeholder.className = 'skel';
       cell.appendChild(placeholder);
-
-      const actions = document.createElement('div');
-      actions.className = 'card-actions';
-      actions.style.visibility = 'hidden';
-
-      const saveBtn = document.createElement('button');
-      saveBtn.type = 'button';
-      saveBtn.className = 'mini-btn';
-      saveBtn.textContent = '\u2B07 save';
-
-      const shareBtn = document.createElement('button');
-      shareBtn.type = 'button';
-      shareBtn.className = 'mini-btn';
-      shareBtn.textContent = '\u2B06 send';
-
-      actions.append(saveBtn, shareBtn);
-      cell.appendChild(actions);
 
       let painted = false;
       async function paint() {
@@ -246,10 +186,6 @@
           square.setAttribute('role', 'img');
           square.setAttribute('aria-label', 'Anonymous letter for ' + (item.to || 'someone special'));
           placeholder.replaceWith(square);
-
-          saveBtn.addEventListener('click', () => saveCard(square, item.id));
-          shareBtn.addEventListener('click', () => shareCard(square, item.id));
-          actions.style.visibility = 'visible';
         } catch {
           const errEl = document.createElement('p');
           errEl.className = 'error-note';
