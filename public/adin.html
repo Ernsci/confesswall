@@ -210,6 +210,16 @@
     }
     .toast.show { transform: translate(-50%, 0); opacity: 1; }
 
+    /* export mode: keep the wax seal fully inside the captured frame */
+    .big-letter.export-mode { padding-top: 92px; }
+    .big-letter.export-mode .seal { top: 20px; }
+    .offscreen {
+      position: fixed !important;
+      left: -12000px !important;
+      top: 0 !important;
+      visibility: hidden;
+    }
+
     /* ---------- Responsive ---------- */
     @media (max-width: 760px) {
       .layout { grid-template-columns: 1fr; }
@@ -396,20 +406,96 @@
       authScreen.style.display = 'flex';
     });
 
-    saveBtn.addEventListener('click', () => {
+    saveBtn.addEventListener('click', async () => {
       if (typeof html2canvas === 'undefined') {
         showToast('Image library still loading, try again.');
         return;
       }
-      html2canvas(bigLetter, { useCORS: true, scale: 2, logging: false })
-        .then(canvas => {
-          const link = document.createElement('a');
-          link.download = `confession-${selected + 1}.png`;
-          link.href = canvas.toDataURL('image/png');
-          link.click();
-          showToast('Saved as PNG \u2665');
-        })
-        .catch(err => showToast('Export failed: ' + err.message));
+      if (selected === null) return;
+
+      saveBtn.disabled = true;
+      showToast('Rendering your square letter \u2665');
+
+      try {
+        // capture a hidden clone so the wax seal is never clipped
+        const clone = bigLetter.cloneNode(true);
+        clone.classList.add('export-mode');
+        clone.classList.add('offscreen');
+        clone.style.width = bigLetter.offsetWidth + 'px';
+        document.body.appendChild(clone);
+
+        const raw = await html2canvas(clone, { useCORS: true, scale: 2, logging: false });
+        clone.remove();
+
+        // composite onto a 1:1 canvas
+        const pad = Math.round(Math.max(raw.width, raw.height) * 0.09);
+        const side = Math.max(raw.width, raw.height) + pad * 2;
+        const out = document.createElement('canvas');
+        out.width = side;
+        out.height = side;
+        const ctx = out.getContext('2d');
+
+        const bg = ctx.createLinearGradient(0, 0, side, side);
+        bg.addColorStop(0, '#241320');
+        bg.addColorStop(1, '#150d13');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, side, side);
+
+        const glow = ctx.createRadialGradient(side * 0.72, side * 0.08, 10, side * 0.72, side * 0.08, side * 0.85);
+        glow.addColorStop(0, 'rgba(217,79,116,0.20)');
+        glow.addColorStop(1, 'rgba(217,79,116,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, side, side);
+
+        const glow2 = ctx.createRadialGradient(side * 0.12, side * 0.95, 10, side * 0.12, side * 0.95, side * 0.7);
+        glow2.addColorStop(0, 'rgba(201,151,63,0.10)');
+        glow2.addColorStop(1, 'rgba(201,151,63,0)');
+        ctx.fillStyle = glow2;
+        ctx.fillRect(0, 0, side, side);
+
+        const hearts = [
+          { x: 0.14, y: 0.16, s: 0.030, c: 'rgba(217,79,116,0.75)', r: -0.2 },
+          { x: 0.86, y: 0.13, s: 0.024, c: 'rgba(201,151,63,0.7)', r: 0.25 },
+          { x: 0.82, y: 0.86, s: 0.028, c: 'rgba(217,79,116,0.65)', r: 0.15 },
+          { x: 0.15, y: 0.84, s: 0.022, c: 'rgba(201,151,63,0.6)', r: -0.3 },
+          { x: 0.5, y: 0.09, s: 0.02, c: 'rgba(217,79,116,0.45)', r: 0 }
+        ];
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        hearts.forEach(h => {
+          ctx.save();
+          ctx.translate(side * h.x, side * h.y);
+          ctx.rotate(h.r);
+          ctx.font = `${Math.round(side * h.s)}px serif`;
+          ctx.fillStyle = h.c;
+          ctx.fillText('\u2665', 0, 0);
+          ctx.restore();
+        });
+
+        const maxW = side - pad * 2;
+        const scale = Math.min(maxW / raw.width, maxW / raw.height);
+        const w = raw.width * scale;
+        const hh = raw.height * scale;
+        ctx.shadowColor = 'rgba(8,3,10,0.55)';
+        ctx.shadowBlur = pad * 0.5;
+        ctx.shadowOffsetY = pad * 0.18;
+        ctx.drawImage(raw, (side - w) / 2, (side - hh) / 2, w, hh);
+        ctx.shadowColor = 'transparent';
+
+        ctx.font = `${Math.round(side * 0.032)}px Caveat, cursive`;
+        ctx.fillStyle = 'rgba(245,233,220,0.6)';
+        ctx.fillText('Confess Wall \u2665', side / 2, side - pad * 0.42);
+
+        const link = document.createElement('a');
+        link.download = `confession-${selected + 1}.png`;
+        link.href = out.toDataURL('image/png');
+        link.click();
+        showToast('Saved as a perfect square \u2665');
+      } catch (err) {
+        showToast('Export failed: ' + err.message);
+      } finally {
+        saveBtn.disabled = false;
+      }
     });
   </script>
 </body>
