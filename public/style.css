@@ -613,6 +613,19 @@ a:focus-visible {
   text-shadow: 0 0 12px rgba(217, 79, 116, 0.4);
 }
 
+.brand-mark {
+  display: block;
+  margin-top: 14px;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0.9;
+}
+
 @keyframes rise {
   from {
     opacity: 0;

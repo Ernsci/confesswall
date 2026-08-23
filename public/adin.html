@@ -500,9 +500,15 @@
         ctx.drawImage(raw, (side - w) / 2, (side - hh) / 2, w, hh);
         ctx.shadowColor = 'transparent';
 
-        ctx.font = `${Math.round(side * 0.032)}px Caveat, cursive`;
-        ctx.fillStyle = 'rgba(245,233,220,0.6)';
-        ctx.fillText('Confess Wall \u2665', side / 2, side - pad * 0.42);
+        ctx.font = `${Math.round(side * 0.034)}px Caveat, cursive`;
+        ctx.fillStyle = 'rgba(245,233,220,0.65)';
+        ctx.fillText('\u2665 Confess Wall', side / 2, side - pad * 0.66);
+
+        ctx.font = `${Math.round(side * 0.024)}px Fraunces, Georgia, serif`;
+        ctx.fillStyle = 'rgba(201,151,63,0.8)';
+        const brand = 'IT KNOWS';
+        const spaced = brand.split('').join(' ');
+        ctx.fillText(spaced, side / 2 + side * 0.012, side - pad * 0.34);
 
         const link = document.createElement('a');
         link.download = `confession-${selected + 1}.png`;
