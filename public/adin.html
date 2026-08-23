@@ -576,8 +576,10 @@
       }
       adminPassword = pw;
       try {
-        const res = await fetch('/admin/data');
-        if (!res.ok) throw new Error('server error');
+        const res = await fetch('/admin/data', {
+          headers: { 'x-admin-password': adminPassword }
+        });
+        if (!res.ok) throw new Error();
         confessions = await res.json();
       } catch {
         authError.textContent = 'Could not load confessions.';

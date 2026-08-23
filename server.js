@@ -2,6 +2,7 @@ require("dotenv").config();
 const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
+const helmet = require("helmet");
 const { createClient } = require("@supabase/supabase-js");
 const config = require("./config");
 
@@ -10,9 +11,12 @@ const PORT = process.env.PORT || 3000;
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const TIMEZONE = process.env.TIMEZONE || "UTC";
 
+app.use(helmet({ contentSecurityPolicy: false }));
+
 const MAX_WORDS = config.maxWords;
 const RATE_LIMIT_MS = config.rateLimitMs;
 const submissions = new Map();
+const adminFails = new Map();
 
 // Supabase setup
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -165,7 +169,7 @@ function findBadWords(text) {
   return matches;
 }
 
-app.use(express.json());
+app.use(express.json({ limit: "32kb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 function getClientIp(req) {
@@ -401,6 +405,7 @@ app.get('/adin', (req, res) => {
 });
 
 app.get('/admin/data', async (req, res) => {
+  if (!adminAuth(req, res)) return;
   const { data, error } = await supabase
     .from("confessions")
     .select("id, sender_name, recipient_name, message, date_display, posted")
@@ -441,11 +446,33 @@ app.get('/admin/data', async (req, res) => {
 });
 
 function adminAuth(req, res) {
+  const ip = getClientIp(req);
+  const thisHash = hashIp(ip);
+  const now = Date.now();
+
+  // brute-force lockout: 8 failures in 10 min -> 15 min lock
+  const entry = adminFails.get(thisHash);
+  if (entry && entry.lockedUntil && now < entry.lockedUntil) {
+    const minutes = Math.ceil((entry.lockedUntil - now) / 60000);
+    res.status(429).json({ error: `Too many attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.` });
+    return false;
+  }
+
   const pw = req.get("x-admin-password") || "";
   if (!ADMIN_PASSWORD || pw !== ADMIN_PASSWORD) {
+    const rec = entry || { fails: [], lockedUntil: 0 };
+    rec.fails = (rec.fails || []).filter(t => now - t < 600_000);
+    rec.fails.push(now);
+    if (rec.fails.length >= 8) {
+      rec.lockedUntil = now + 900_000;
+      rec.fails = [];
+    }
+    adminFails.set(thisHash, rec);
     res.status(401).json({ error: "Unauthorized." });
     return false;
   }
+
+  // success passes through but keeps prior failures — only the 10-minute window forgives
   return true;
 }
 
