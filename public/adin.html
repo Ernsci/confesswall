@@ -476,8 +476,7 @@
           { x: 0.14, y: 0.16, s: 0.030, c: 'rgba(217,79,116,0.75)', r: -0.2 },
           { x: 0.86, y: 0.13, s: 0.024, c: 'rgba(201,151,63,0.7)', r: 0.25 },
           { x: 0.82, y: 0.86, s: 0.028, c: 'rgba(217,79,116,0.65)', r: 0.15 },
-          { x: 0.15, y: 0.84, s: 0.022, c: 'rgba(201,151,63,0.6)', r: -0.3 },
-          { x: 0.5, y: 0.09, s: 0.02, c: 'rgba(217,79,116,0.45)', r: 0 }
+          { x: 0.15, y: 0.84, s: 0.022, c: 'rgba(201,151,63,0.6)', r: -0.3 }
         ];
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -501,13 +500,13 @@
         ctx.drawImage(raw, (side - w) / 2, (side - hh) / 2, w, hh);
         ctx.shadowColor = 'transparent';
 
-        ctx.font = `${Math.round(side * 0.034)}px Caveat, cursive`;
-        ctx.fillStyle = 'rgba(245,233,220,0.65)';
-        ctx.fillText('\u2665 Confess Wall', side / 2, side - pad * 0.66);
+        ctx.font = `500 ${Math.round(side * 0.03)}px Caveat, cursive`;
+        ctx.fillStyle = 'rgba(245,233,220,0.6)';
+        ctx.fillText('C o n f e s s   W a l l', side / 2, pad * 0.5);
 
         ctx.font = `${Math.round(side * 0.026)}px serif`;
         ctx.fillStyle = 'rgba(201,151,63,0.85)';
-        ctx.fillText('𝐈𝐓 𝐊𝐍𝐎𝐖𝐒', side / 2, side - pad * 0.34);
+        ctx.fillText('𝐈𝐓 𝐊𝐍𝐎𝐖𝐒', side / 2, side - pad * 0.42);
 
         const link = document.createElement('a');
         link.download = `confession-${selected + 1}.png`;
