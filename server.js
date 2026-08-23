@@ -212,6 +212,26 @@ app.post("/api/confess", async (req, res) => {
     console.error("Failed to save confession to database:", dbError.message);
   }
 
+  // Push notification via ntfy (best-effort, non-blocking)
+  const NTFY_TOPIC = process.env.NTFY_TOPIC;
+  if (NTFY_TOPIC) {
+    const preview =
+      displayMessage.length > 300
+        ? `${displayMessage.slice(0, 300)}…`
+        : displayMessage;
+    fetch("https://ntfy.sh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        topic: NTFY_TOPIC,
+        title: `\u2665 New confession from ${from}`,
+        message: `To: ${to}\n\n${preview}`,
+        tags: ["heart"],
+        priority: 4
+      })
+    }).catch(err => console.error("ntfy push failed:", err.message));
+  }
+
   return res.json({ success: true });
 });
 
