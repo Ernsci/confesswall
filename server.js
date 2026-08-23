@@ -16,6 +16,7 @@ const submissions = new Map();
 // Supabase setup
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'chaddy';
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment.");
@@ -221,21 +222,78 @@ app.get('/adin', (req, res) => {
 app.get('/admin/data', async (req, res) => {
   const { data, error } = await supabase
     .from("confessions")
-    .select("sender_name, recipient_name, message, date_display, created_at")
+    .select("id, sender_name, recipient_name, message, date_display, posted")
     .order("created_at", { ascending: false })
     .limit(500);
 
-  if (error) {
-    console.error("Failed to fetch confessions:", error.message);
+  if (!error) {
+    return res.json(data.map(r => ({
+      id: r.id,
+      from: r.sender_name,
+      to: r.recipient_name,
+      message: r.message,
+      date: r.date_display,
+      posted: !!r.posted
+    })));
+  }
+
+  // Fallback if the "posted" column migration hasn't run yet
+  const { data: legacy, error: legacyError } = await supabase
+    .from("confessions")
+    .select("id, sender_name, recipient_name, message, date_display")
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  if (legacyError) {
+    console.error("Failed to fetch confessions:", legacyError.message);
     return res.status(500).json({ error: "Could not load confessions." });
   }
 
-  res.json(data.map(r => ({
+  res.json(legacy.map(r => ({
+    id: r.id,
     from: r.sender_name,
     to: r.recipient_name,
     message: r.message,
-    date: r.date_display
+    date: r.date_display,
+    posted: false
   })));
+});
+
+function adminAuth(req, res) {
+  const pw = req.get("x-admin-password") || "";
+  if (!ADMIN_PASSWORD || pw !== ADMIN_PASSWORD) {
+    res.status(401).json({ error: "Unauthorized." });
+    return false;
+  }
+  return true;
+}
+
+app.delete("/admin/data/:id", async (req, res) => {
+  if (!adminAuth(req, res)) return;
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid id." });
+  }
+  const { error } = await supabase.from("confessions").delete().eq("id", id);
+  if (error) {
+    console.error("Failed to delete confession:", error.message);
+    return res.status(500).json({ error: "Delete failed." });
+  }
+  res.json({ success: true });
+});
+
+app.post("/admin/data/:id/posted", async (req, res) => {
+  if (!adminAuth(req, res)) return;
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid id." });
+  }
+  const { error } = await supabase.from("confessions").update({ posted: true }).eq("id", id);
+  if (error) {
+    console.error("Failed to mark confession:", error.message);
+    return res.status(500).json({ error: "Update failed." });
+  }
+  res.json({ success: true });
 });
 
 app.listen(PORT, () => {

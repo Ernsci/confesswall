@@ -202,6 +202,30 @@
     .export-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
     .hint-line { margin: 0.8rem 0 0; font-family: "Caveat", cursive; font-size: 1.05rem; color: var(--text-muted); }
 
+    .icon-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 0.72rem 1.3rem; border-radius: 999px;
+      border: 1.5px solid rgba(255,255,255,0.16);
+      background: transparent; color: var(--text);
+      font-family: inherit; font-size: 0.92rem; font-weight: 600; cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+    }
+    .icon-btn:hover:not(:disabled) { transform: translateY(-1px); }
+    .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .icon-btn svg { flex: none; }
+    .icon-btn.danger { border-color: rgba(224,82,110,0.4); }
+    .icon-btn.danger:hover:not(:disabled) {
+      border-color: #e0526e; color: #ff9db2; background: rgba(217,79,116,0.12);
+    }
+    .icon-btn.success { border-color: rgba(88,196,122,0.45); color: #7ddb96; }
+    .icon-btn.success:hover:not(:disabled) { background: rgba(88,196,122,0.14); border-color: #58c47a; }
+    .icon-btn.success.is-done { opacity: 0.55; cursor: default; }
+
+    .tab.posted .name { color: #7ddb96; }
+    .tab .posted-check {
+      margin-left: auto; color: #7ddb96; font-size: 0.78rem; font-weight: 700;
+    }
+
     /* toast */
     .toast {
       position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 80px);
@@ -290,8 +314,16 @@
 
         <div class="stage-actions">
           <button class="export-btn" id="save-png" disabled>Save this letter as PNG</button>
+          <button class="icon-btn danger" id="delete-btn" disabled>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            Delete
+          </button>
+          <button class="icon-btn success" id="done-btn" disabled>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            <span id="done-label">Done</span>
+          </button>
         </div>
-        <p class="hint-line">tip: select a name first, then save the opened letter as an image</p>
+        <p class="hint-line">tip: Done turns a sender green once you've posted their confession</p>
       </section>
     </div>
   </div>
@@ -316,10 +348,30 @@
     const letterDate = document.getElementById('letter-date');
     const countPill = document.getElementById('confession-count');
     const saveBtn = document.getElementById('save-png');
+    const deleteBtn = document.getElementById('delete-btn');
+    const doneBtn = document.getElementById('done-btn');
+    const doneLabel = document.getElementById('done-label');
     const toast = document.getElementById('toast');
 
     let confessions = [];
     let selected = null;
+    let adminPassword = '';
+
+    function showEmpty(html) {
+      bigLetter.hidden = true;
+      saveBtn.disabled = true;
+      deleteBtn.disabled = true;
+      doneBtn.disabled = true;
+      emptyNote.style.display = 'flex';
+      emptyNote.innerHTML = html;
+    }
+
+    function syncDoneButton() {
+      const c = confessions[selected];
+      if (!c) return;
+      doneBtn.classList.toggle('is-done', !!c.posted);
+      doneLabel.textContent = c.posted ? 'Posted' : 'Done';
+    }
 
     function escapeHtml(value) {
       return String(value)
@@ -342,6 +394,7 @@
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'tab';
+        if (c.posted) btn.classList.add('posted');
         btn.dataset.index = i;
         const dot = document.createElement('span');
         dot.className = 'heart-dot';
@@ -351,6 +404,13 @@
         name.className = 'name';
         name.textContent = c.from || 'Anonymous';
         btn.append(dot, name);
+        if (c.posted) {
+          const check = document.createElement('span');
+          check.className = 'posted-check';
+          check.textContent = '\u2713 posted';
+          check.setAttribute('aria-hidden', 'true');
+          btn.appendChild(check);
+        }
         btn.addEventListener('click', () => selectConfession(i, btn));
         tabsEl.appendChild(btn);
       });
@@ -369,6 +429,9 @@
       letterMessage.textContent = c.message || '';
       letterDate.textContent = c.date || '';
       saveBtn.disabled = false;
+      deleteBtn.disabled = false;
+      doneBtn.disabled = false;
+      syncDoneButton();
 
       bigLetter.style.animation = 'none';
       void bigLetter.offsetWidth;
@@ -382,10 +445,12 @@
     loginForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       authError.textContent = '';
-      if (passwordInput.value.trim() !== ADMIN_PASSWORD) {
+      const pw = passwordInput.value.trim();
+      if (pw !== ADMIN_PASSWORD) {
         authError.textContent = 'Incorrect password.';
         return;
       }
+      adminPassword = pw;
       try {
         const res = await fetch('/admin/data');
         if (!res.ok) throw new Error('server error');
@@ -405,14 +470,63 @@
     logoutBtn.addEventListener('click', () => {
       confessions = [];
       selected = null;
+      adminPassword = '';
       tabsEl.innerHTML = '';
       bigLetter.hidden = true;
+      saveBtn.disabled = true;
+      deleteBtn.disabled = true;
+      doneBtn.disabled = true;
       emptyNote.style.display = 'flex';
       emptyNote.innerHTML = 'Pick a name on the side<br>to open their letter &#9829;';
-      saveBtn.disabled = true;
       passwordInput.value = '';
       dashboard.style.display = 'none';
       authScreen.style.display = 'flex';
+    });
+
+    deleteBtn.addEventListener('click', async () => {
+      const c = confessions[selected];
+      if (!c) return;
+      if (!confirm(`Delete this confession from ${c.from || 'Anonymous'}? This cannot be undone.`)) return;
+
+      try {
+        const res = await fetch(`/admin/data/${c.id}`, {
+          method: 'DELETE',
+          headers: { 'x-admin-password': adminPassword }
+        });
+        if (!res.ok) throw new Error();
+        confessions.splice(selected, 1);
+        selected = null;
+        renderTabs();
+        if (confessions.length === 0) {
+          showEmpty('No confessions yet.<br>they will appear here &#9829;');
+        } else {
+          showEmpty('Pick a name on the side<br>to open their letter &#9829;');
+        }
+        showToast('Confession deleted');
+      } catch {
+        showToast('Delete failed, try again.');
+      }
+    });
+
+    doneBtn.addEventListener('click', async () => {
+      const c = confessions[selected];
+      if (!c || c.posted) return;
+
+      try {
+        const res = await fetch(`/admin/data/${c.id}/posted`, {
+          method: 'POST',
+          headers: { 'x-admin-password': adminPassword }
+        });
+        if (!res.ok) throw new Error();
+        c.posted = true;
+        syncDoneButton();
+        renderTabs();
+        const tab = tabsEl.querySelector(`[data-index="${selected}"]`);
+        if (tab) tab.setAttribute('aria-current', 'true');
+        showToast(`${c.from || 'Anonymous'} marked as posted \u2665`);
+      } catch {
+        showToast('Could not mark as posted.');
+      }
     });
 
     saveBtn.addEventListener('click', async () => {
