@@ -618,11 +618,8 @@ a:focus-visible {
   display: block;
   margin-top: 14px;
   font-family: "Fraunces", Georgia, serif;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.42em;
-  text-indent: 0.42em;
-  text-transform: uppercase;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
   color: var(--gold);
   opacity: 0.9;
 }
