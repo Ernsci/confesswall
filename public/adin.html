@@ -4,163 +4,413 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Confess Wall — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
   <style>
     :root {
-      --admin-bg: #1a121f;
-      --admin-card: #24182b;
-      --admin-accent: #c9973f;
-      --admin-accent-hover: #b52a52;
-      --admin-text: #f5e9dc;
-      --admin-text-muted: #a98b97;
+      --night-1: #150d13;
+      --card-bg: #241829;
+      --paper: #fdf6ea;
+      --paper-deep: #f3e5cd;
+      --ink: #372a26;
+      --ink-soft: #6d574c;
+      --rose: #d94f74;
+      --rose-deep: #9e1b40;
+      --gold: #c9973f;
+      --text: #f5e9dc;
+      --text-muted: #a98b97;
     }
-    body { font-family: "Caveat", cursive, sans-serif; background: var(--admin-bg); color: var(--admin-text); margin: 0; min-height: 100vh; }
-    a { color: var(--admin-accent); text-decoration: none; }
-    a:hover { color: var(--admin-accent-hover); }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Fraunces", Georgia, serif;
+      color: var(--text);
+      background:
+        radial-gradient(1000px 700px at 75% -10%, rgba(217, 79, 116, 0.16), transparent 60%),
+        radial-gradient(800px 600px at 5% 110%, rgba(201, 151, 63, 0.08), transparent 55%),
+        linear-gradient(175deg, #241320, var(--night-1) 65%);
+    }
+
+    /* ---------- Auth ---------- */
     .auth-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
-    .auth-card { background: var(--admin-card); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 2.5rem 2rem; max-width: 380px; width: 100%; box-shadow: 0 25px 50px rgba(8,3,10,0.55); animation: fadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-    .auth-card h2 { text-align: center; margin: 0 0 1.5rem; font-family: "Fraunces", Georgia, serif; font-size: 1.75rem; color: var(--admin-accent); letter-spacing: -0.02em; }
-    .auth-card p { text-align: center; color: var(--admin-text-muted); margin: 0 0 1.8rem; font-size: 0.92rem; }
-    .auth-card input { width: 100%; padding: 0.85rem 1rem; margin: 0 0 1rem; border: 1.5px solid rgba(55,42,38,0.32); border-radius: 8px; background: #1f162a; color: var(--admin-text); font-family: inherit; font-size: 1rem; box-sizing: border-box; transition: border-color 0.15s ease, background 0.15s ease; }
-    .auth-card input:focus { outline: none; border-color: var(--admin-accent); background: #2a2137; }
-    .auth-card button { width: 100%; padding: 0.9rem 1rem; border: none; border-radius: 999px; background: var(--admin-accent); color: #fff7ee; font-family: inherit; font-size: 1rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; margin-top: 0.5rem; transition: background 0.15s ease, transform 0.1s ease; }
-    .auth-card button:hover { background: var(--admin-accent-hover); transform: translateY(-1px); }
-    .auth-card .hint { text-align: center; margin-top: 1rem; font-size: 0.76rem; color: var(--admin-text-muted); }
-    .dashboard { padding: 2rem; max-width: 1200px; margin: 0 auto; }
-    .dashboard .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
-    .dashboard h1 { font-family: "Fraunces", Georgia, serif; font-size: 1.8rem; margin: 0; color: var(--admin-text); }
-    .dashboard .count { color: var(--admin-text-muted); font-size: 0.88rem; }
-    .dashboard .logout { align-self: flex-end; }
-    .logout-btn { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: var(--admin-text-muted); padding: 0.5rem 0.8rem; border-radius: 6px; font-size: 0.82rem; cursor: pointer; transition: all 0.15s ease; }
-    .logout-btn:hover { background: rgba(255,255,255,0.06); color: var(--admin-text); }
-    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
-    .letter-card { background: var(--admin-card); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 1.8rem 1.5rem; margin: 0; transition: box-shadow 0.2s ease; }
-    .letter-card:hover { box-shadow: 0 8px 25px rgba(8,3,10,0.4); }
-    .letter-card .letter-header { font-family: "Fraunces", Georgia, serif; font-size: 1.15rem; color: var(--admin-accent); text-transform: uppercase; letter-spacing: -0.01em; margin-bottom: 0.6rem; }
-    .letter-card .letter-body { font-family: "Caveat", cursive; font-size: 0.95rem; line-height: 1.5; color: var(--admin-text); margin-bottom: 0.8rem; }
-    .letter-card .meta { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.72rem; color: var(--admin-text-muted); }
-    .letter-card .date { font-family: "Fraunces", Georgia, serif; color: var(--admin-accent); }
-    .letter-card .sent { opacity: 0.6; }
-    .export-btn { margin-top: 1.5rem; padding: 0.85rem 1.4rem; border: none; border-radius: 999px; background: var(--admin-accent); color: #fff7ee; font-family: inherit; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.15s ease, transform 0.1s ease; }
-    .export-btn:hover { background: var(--admin-accent-hover); transform: translateY(-1px); }
-    .export-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    @media (prefers-reduced-motion: reduce) { .auth-card { animation: none; } .export-btn { transition: none; } }
+    .auth-card {
+      width: 100%; max-width: 360px; padding: 2.5rem 2rem; text-align: center;
+      background: var(--card-bg); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+      box-shadow: 0 25px 50px rgba(8,3,10,0.55);
+      animation: rise 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .auth-card h2 { margin: 0 0 0.4rem; font-weight: 420; font-size: 1.7rem; letter-spacing: -0.01em; }
+    .auth-card h2 em { color: var(--rose); font-style: italic; }
+    .auth-card p { margin: 0 0 1.6rem; color: var(--text-muted); font-size: 0.95rem; }
+    .auth-card input {
+      width: 100%; padding: 0.85rem 1rem; margin-bottom: 0.9rem;
+      border: 1.5px solid rgba(255,255,255,0.14); border-radius: 10px;
+      background: rgba(0,0,0,0.25); color: var(--text); font-family: inherit; font-size: 1rem;
+    }
+    .auth-card input:focus { outline: none; border-color: var(--rose); box-shadow: 0 0 0 3px rgba(217,79,116,0.22); }
+    .auth-btn {
+      width: 100%; padding: 0.85rem; border: none; border-radius: 999px;
+      background: linear-gradient(160deg, #b52a52, var(--rose-deep));
+      color: #fff7ee; font-family: inherit; font-size: 1rem; font-weight: 700; cursor: pointer;
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+    .auth-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+    .auth-error { margin: 0.9rem 0 0; min-height: 1.2em; font-size: 0.88rem; color: #ff9db2; }
+
+    button:focus-visible, input:focus-visible { outline: 3px solid var(--rose); outline-offset: 3px; }
+
+    /* ---------- Dashboard shell ---------- */
+    .dashboard { display: none; max-width: 1080px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+    .topbar {
+      display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+      margin-bottom: 1.6rem; animation: rise 0.5s 0.05s ease both;
+    }
+    .topbar h1 { margin: 0; font-weight: 400; font-size: 1.9rem; letter-spacing: -0.01em; }
+    .topbar h1 em { color: var(--gold); font-style: italic; font-weight: 560; }
+    .count-pill {
+      font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text-muted); border: 1px solid rgba(255,255,255,0.12);
+      padding: 4px 12px; border-radius: 999px;
+    }
+    .logout-btn {
+      margin-left: auto; background: transparent; cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.16); border-radius: 999px;
+      color: var(--text-muted); padding: 7px 18px; font-family: inherit; font-size: 0.85rem;
+      transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+    .logout-btn:hover { color: var(--text); border-color: var(--rose); background: rgba(217,79,116,0.1); }
+
+    /* ---------- Master–detail layout ---------- */
+    .layout {
+      display: grid; grid-template-columns: 250px 1fr; gap: 1.6rem;
+      align-items: start; animation: rise 0.55s 0.12s ease both;
+    }
+
+    /* small name boxes */
+    .tabs {
+      display: flex; flex-direction: column; gap: 9px;
+      max-height: 68vh; overflow-y: auto; padding: 4px 4px 4px 0;
+      scrollbar-width: thin; scrollbar-color: var(--rose-deep) transparent;
+    }
+    .tab {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      padding: 11px 13px; cursor: pointer; text-align: left;
+      background: var(--card-bg); color: var(--text);
+      border: 1px solid rgba(255,255,255,0.09); border-radius: 11px;
+      font-family: inherit; font-size: 0.98rem;
+      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+    .tab:hover { transform: translateX(3px); border-color: rgba(217,79,116,0.5); }
+    .tab .heart-dot { color: var(--rose); font-size: 0.8rem; opacity: 0.75; }
+    .tab .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tab[aria-current="true"] {
+      border-color: var(--gold); background: linear-gradient(160deg, rgba(217,79,116,0.18), rgba(201,151,63,0.12));
+      box-shadow: 0 6px 18px rgba(158,27,64,0.28);
+    }
+    .tab[aria-current="true"] .heart-dot { opacity: 1; }
+
+    /* stage */
+    .stage { position: relative; min-height: 420px; }
+    .empty-note {
+      display: flex; align-items: center; justify-content: center; min-height: 380px;
+      color: var(--text-muted); font-family: "Caveat", cursive; font-size: 1.5rem;
+      text-align: center; padding: 2rem; border: 1.5px dashed rgba(255,255,255,0.14); border-radius: 16px;
+    }
+
+    /* ---------- The big cute letter ---------- */
+    .big-letter {
+      position: relative;
+      background: linear-gradient(var(--paper), var(--paper-deep));
+      color: var(--ink);
+      border-radius: 16px;
+      padding: 58px 34px 22px;
+      box-shadow: 0 30px 70px rgba(8,3,10,0.6);
+      animation: pop-in 0.45s cubic-bezier(0.34, 1.4, 0.64, 1);
+    }
+    @keyframes pop-in {
+      from { opacity: 0; transform: translateY(14px) scale(0.97); }
+      to { opacity: 1; transform: none; }
+    }
+    .big-letter::before {
+      content: ""; position: absolute; inset: 12px;
+      border: 1.5px dashed rgba(55,42,38,0.24); border-radius: 10px; pointer-events: none;
+    }
+    .seal {
+      position: absolute; top: -26px; left: 50%; transform: translateX(-50%) rotate(-6deg);
+      width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; color: #ffe9dd;
+      border-radius: 47% 53% 51% 49% / 52% 46% 54% 48%;
+      background: radial-gradient(circle at 32% 28%, #d34a70, var(--rose-deep) 58%, #7c1330);
+      box-shadow: inset 0 2px 4px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(60,5,22,0.55), 0 10px 22px rgba(158,27,64,0.45);
+    }
+    .seal::before {
+      content: ""; position: absolute; inset: 7px; border-radius: inherit;
+      border: 1px solid rgba(255,233,221,0.35);
+    }
+
+    .letter-to-label {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--ink-soft); text-align: center;
+    }
+    .letter-to {
+      margin: 4px 0 20px; text-align: center;
+      font-style: italic; font-weight: 560; font-size: clamp(1.5rem, 3vw, 2.1rem);
+      color: var(--rose-deep); line-height: 1.15; word-break: break-word;
+    }
+    .divider {
+      width: 130px; height: 1px; margin: 0 auto 22px;
+      background: linear-gradient(90deg, transparent, rgba(156,36,80,0.55), transparent);
+    }
+    .letter-message {
+      font-family: "Caveat", cursive; font-size: clamp(1.35rem, 2.4vw, 1.7rem);
+      line-height: 34px; color: var(--ink); white-space: pre-wrap; word-break: break-word;
+      background-image: repeating-linear-gradient(
+        to bottom, transparent 0, transparent 33px,
+        rgba(55,42,38,0.13) 33px, rgba(55,42,38,0.13) 34px
+      );
+      padding-top: 4px; min-height: 170px;
+    }
+    .letter-foot {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+      margin-top: 26px; padding-top: 14px; border-top: 1px solid rgba(55,42,38,0.18);
+    }
+    .letter-date {
+      font-size: 0.86rem; color: var(--ink-soft);
+      letter-spacing: 0.06em; font-variant-numeric: tabular-nums;
+    }
+    .foot-heart { color: var(--rose); animation: beat 1.6s ease-in-out infinite; }
+
+    @keyframes beat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+    @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+    /* actions under the letter */
+    .stage-actions { margin-top: 1.2rem; display: flex; gap: 0.9rem; flex-wrap: wrap; }
+    .export-btn {
+      padding: 0.8rem 1.5rem; border: none; border-radius: 999px; cursor: pointer;
+      background: linear-gradient(160deg, #b52a52, var(--rose-deep));
+      color: #fff7ee; font-family: inherit; font-size: 0.95rem; font-weight: 700; letter-spacing: 0.03em;
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+    .export-btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
+    .export-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+    .hint-line { margin: 0.8rem 0 0; font-family: "Caveat", cursive; font-size: 1.05rem; color: var(--text-muted); }
+
+    /* toast */
+    .toast {
+      position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 80px);
+      background: var(--card-bg); color: var(--text); border: 1px solid rgba(217,79,116,0.5);
+      padding: 10px 20px; border-radius: 999px; font-size: 0.9rem;
+      opacity: 0; pointer-events: none; transition: transform 0.3s ease, opacity 0.3s ease; z-index: 50;
+    }
+    .toast.show { transform: translate(-50%, 0); opacity: 1; }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 760px) {
+      .layout { grid-template-columns: 1fr; }
+      .tabs { flex-direction: row; flex-wrap: wrap; max-height: none; overflow: visible; }
+      .tab { width: auto; flex: 1 1 auto; }
+      .big-letter { padding: 52px 20px 18px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      .foot-heart { animation: none; }
+    }
   </style>
 </head>
 <body>
-  <!-- Auth Screen -->
+
+  <!-- Auth -->
   <div class="auth-screen" id="auth-screen">
     <div class="auth-card">
-      <h2>Confess Wall Admin</h2>
-      <p>Enter password to view confessions</p>
-      <input type="password" id="admin-password" placeholder="chaddy">
-      <button id="admin-login">Login</button>
-      <p class="hint">Password: <strong>chaddy</strong></p>
+      <h2>Confess <em>Wall</em> Admin</h2>
+      <p>Enter the admin password to continue</p>
+      <form id="login-form">
+        <input type="password" id="admin-password" placeholder="Password" autocomplete="current-password">
+        <button type="submit" class="auth-btn">Unlock</button>
+      </form>
+      <p class="auth-error" id="auth-error" role="alert"></p>
     </div>
   </div>
 
-  <!-- Dashboard (hidden until login) -->
-  <div class="dashboard" id="dashboard" style="display: none;">
-    <div class="header">
-      <h1>Confessions</h1>
-      <div class="count" id="confession-count">0</div>
+  <!-- Dashboard -->
+  <div class="dashboard" id="dashboard">
+    <div class="topbar">
+      <h1>Confessions <em>&amp; letters</em></h1>
+      <span class="count-pill" id="confession-count">0 total</span>
       <button class="logout-btn" id="logout">Logout</button>
     </div>
-    <div class="cards-grid" id="cards-grid"></div>
-    <div style="margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
-      <button class="export-btn" id="download-png">Save as PNG</button>
-      <button class="export-btn" id="download-all">Download All as PNG</button>
+
+    <div class="layout">
+      <nav class="tabs" id="tabs" aria-label="Confessions by sender"></nav>
+
+      <section class="stage">
+        <div class="empty-note" id="empty-note">Pick a name on the side<br>to open their letter &#9829;</div>
+
+        <article class="big-letter" id="big-letter" hidden aria-live="polite">
+          <div class="seal" aria-hidden="true">&#9829;</div>
+          <p class="letter-to-label">To</p>
+          <p class="letter-to" id="letter-to"></p>
+          <div class="divider" aria-hidden="true"></div>
+          <div class="letter-message" id="letter-message"></div>
+          <footer class="letter-foot">
+            <span class="letter-date" id="letter-date"></span>
+            <span class="foot-heart" aria-hidden="true">&#9829;</span>
+          </footer>
+        </article>
+
+        <div class="stage-actions">
+          <button class="export-btn" id="save-png" disabled>Save this letter as PNG</button>
+        </div>
+        <p class="hint-line">tip: select a name first, then save the opened letter as an image</p>
+      </section>
     </div>
-    <p class="hint" style="margin-top: 1rem; color: var(--admin-text-muted); font-size: 0.78rem;">
-      Press “Download All as PNG” to capture the full grid. Images may be tall for long messages.
-    </p>
   </div>
 
-  <script>
-    const CORRECT_PASSWORD = 'chaddy';
-    const ADMIN_CONFESSIONS = [];
+  <div class="toast" id="toast" role="status"></div>
 
-    const cardsGrid = document.getElementById('cards-grid');
-    const confessionCount = document.getElementById('confession-count');
-    const downloadPng = document.getElementById('download-png');
-    const downloadAll = document.getElementById('download-all');
+  <script>
+    const ADMIN_PASSWORD = 'chaddy';
+
     const authScreen = document.getElementById('auth-screen');
     const dashboard = document.getElementById('dashboard');
+    const loginForm = document.getElementById('login-form');
+    const passwordInput = document.getElementById('admin-password');
+    const authError = document.getElementById('auth-error');
+    const logoutBtn = document.getElementById('logout');
 
-    function renderConfession(cardData) {
-      const safeFrom = cardData.from.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
-      const safeMessage = cardData.message.replace(/&/g, '&').replace(/</g, '>').replace(/\n/g, '<br>');
-      return `
-        <div class="letter-card">
-          <div class="letter-header">To: ${safeFrom}</div>
-          <div class="letter-body">${safeMessage}</div>
-          <div class="letter-date">${cardData.date}</div>
-        </div>
-      `;
+    const tabsEl = document.getElementById('tabs');
+    const emptyNote = document.getElementById('empty-note');
+    const bigLetter = document.getElementById('big-letter');
+    const letterTo = document.getElementById('letter-to');
+    const letterMessage = document.getElementById('letter-message');
+    const letterDate = document.getElementById('letter-date');
+    const countPill = document.getElementById('confession-count');
+    const saveBtn = document.getElementById('save-png');
+    const toast = document.getElementById('toast');
+
+    let confessions = [];
+    let selected = null;
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
-    function renderGrid() {
-      cardsGrid.innerHTML = '';
-      if (ADMIN_CONFESSIONS.length === 0) {
-        cardsGrid.innerHTML = '<p style="color:var(--admin-text-muted); text-align:center; padding:2rem;">No confessions yet.</span>';
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    function renderTabs() {
+      tabsEl.innerHTML = '';
+      confessions.forEach((c, i) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tab';
+        btn.dataset.index = i;
+        const dot = document.createElement('span');
+        dot.className = 'heart-dot';
+        dot.textContent = '\u2665';
+        dot.setAttribute('aria-hidden', 'true');
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = c.from || 'Anonymous';
+        btn.append(dot, name);
+        btn.addEventListener('click', () => selectConfession(i, btn));
+        tabsEl.appendChild(btn);
+      });
+      countPill.textContent = `${confessions.length} total`;
+    }
+
+    function selectConfession(index, tabEl) {
+      selected = index;
+      const c = confessions[index];
+      tabsEl.querySelectorAll('.tab').forEach(t => t.removeAttribute('aria-current'));
+      tabEl.setAttribute('aria-current', 'true');
+      emptyNote.style.display = 'none';
+      bigLetter.hidden = false;
+
+      letterTo.textContent = c.to || 'Someone special';
+      letterMessage.textContent = c.message || '';
+      letterDate.textContent = c.date || '';
+      saveBtn.disabled = false;
+
+      bigLetter.style.animation = 'none';
+      void bigLetter.offsetWidth;
+      bigLetter.style.animation = '';
+
+      if (window.innerWidth <= 760) {
+        bigLetter.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      authError.textContent = '';
+      if (passwordInput.value.trim() !== ADMIN_PASSWORD) {
+        authError.textContent = 'Incorrect password.';
         return;
       }
-      const count = Math.min(ADMIN_CONFESSIONS.length, 20);
-      confessionCount.textContent = count;
-      for (let i = 0; i < count; i++) {
-        cardsGrid.innerHTML += renderConfession(ADMIN_CONFESSIONS[i]);
+      try {
+        const res = await fetch('/admin/data');
+        if (!res.ok) throw new Error('server error');
+        confessions = await res.json();
+      } catch {
+        authError.textContent = 'Could not load confessions.';
+        return;
       }
-    }
-
-    document.getElementById('admin-login').addEventListener('click', () => {
-      const pw = document.getElementById('admin-password').value.trim();
-      if (pw === CORRECT_PASSWORD) {
-        fetch('/admin/data')
-          .then(r => r.json())
-          .then(data => { ADMIN_CONFESSIONS.splice(0, ADMIN_CONFESSIONS.length, ...data); renderGrid(); });
-        authScreen.style.display = 'none';
-        dashboard.style.display = 'block';
-      } else {
-        alert('Incorrect password.');
+      authScreen.style.display = 'none';
+      dashboard.style.display = 'block';
+      renderTabs();
+      if (confessions.length === 0) {
+        emptyNote.innerHTML = 'No confessions yet.<br>they will appear here &#9829;';
       }
     });
 
-    document.getElementById('logout').addEventListener('click', () => {
-      ADMIN_CONFESSIONS.splice(0, ADMIN_CONFESSIONS.length);
-      authScreen.style.display = 'block';
+    logoutBtn.addEventListener('click', () => {
+      confessions = [];
+      selected = null;
+      tabsEl.innerHTML = '';
+      bigLetter.hidden = true;
+      emptyNote.style.display = 'flex';
+      emptyNote.innerHTML = 'Pick a name on the side<br>to open their letter &#9829;';
+      saveBtn.disabled = true;
+      passwordInput.value = '';
       dashboard.style.display = 'none';
-      cardsGrid.innerHTML = '';
-      confessionCount.textContent = '0';
+      authScreen.style.display = 'flex';
     });
 
-    function captureGridToPNG(selector, filename) {
-      const element = document.querySelector(selector);
-      if (!element) return alert('Grid not found.');
-      html2canvas(element, { useCORS: true, scale: 2, logging: false })
+    saveBtn.addEventListener('click', () => {
+      if (typeof html2canvas === 'undefined') {
+        showToast('Image library still loading, try again.');
+        return;
+      }
+      html2canvas(bigLetter, { useCORS: true, scale: 2, logging: false })
         .then(canvas => {
           const link = document.createElement('a');
-          link.download = filename || 'confession-admin.png';
+          link.download = `confession-${selected + 1}.png`;
           link.href = canvas.toDataURL('image/png');
           link.click();
+          showToast('Saved as PNG \u2665');
         })
-        .catch(err => alert('PNG export failed: ' + err.message));
-    }
-
-    downloadPng.addEventListener('click', () => {
-      captureGridToPNG('.cards-grid', 'single-confession.png');
+        .catch(err => showToast('Export failed: ' + err.message));
     });
-
-    downloadAll.addEventListener('click', () => {
-      captureGridToPNG('.cards-grid', 'all-confessions.png');
-    });
-
-    // Initial fetch on page load (will show auth screen until password entered)
-    fetch('/admin/data')
-      .then(r => r.json())
-      .then(data => { ADMIN_CONFESSIONS.splice(0, ADMIN_CONFESSIONS.length, ...data); renderGrid(); })
-      .then(() => { if (ADMIN_CONFESSIONS.length > 0) { document.getElementById('auth-screen').style.display = 'none'; document.getElementById('dashboard').style.display = 'block'; }; });
   </script>
 </body>
 </html>
