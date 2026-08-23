@@ -322,6 +322,14 @@
       z-index: -1;
     }
 
+    /* while exporting, strip everything except the letter stage */
+    body.exporting .topbar,
+    body.exporting .toolbar,
+    body.exporting .stats-strip,
+    body.exporting .tabs,
+    body.exporting .blocked-view,
+    body.exporting .toast { display: none !important; }
+
     /* ---------- Responsive ---------- */
     @media (max-width: 760px) {
       .layout { grid-template-columns: 1fr; }
@@ -801,30 +809,40 @@
 
       saveBtn.disabled = true;
       showToast('Rendering your square letter \u2665');
+      document.body.classList.add('exporting');
 
+      let clone = null;
       try {
         // capture a hidden clone so the wax seal is never clipped
-        const clone = bigLetter.cloneNode(true);
+        clone = bigLetter.cloneNode(true);
         clone.classList.add('export-mode');
         clone.classList.add('offscreen');
-        clone.style.width = bigLetter.offsetWidth + 'px';
+        const rect = bigLetter.getBoundingClientRect();
+        clone.style.width = Math.max(rect.width, bigLetter.offsetWidth) + 'px';
         document.body.appendChild(clone);
 
+        // keep total pixels under mobile canvas limits (iOS ~16.7M)
+        const w = rect.width || 600;
+        const h = rect.height || 800;
+        const scale = Math.min(2, Math.sqrt(15_000_000 / (w * h)));
         const raw = await html2canvas(clone, {
           useCORS: true,
-          scale: 2,
+          scale,
           logging: false,
-          backgroundColor: null
+          backgroundColor: null,
+          width: w,
+          height: h,
+          windowWidth: document.documentElement.clientWidth,
+          windowHeight: document.documentElement.clientHeight
         });
-        clone.remove();
 
         if (!raw || !raw.width || !raw.height) {
           throw new Error('capture was empty');
         }
 
-        // composite onto a 1:1 canvas
+        // composite onto a 1:1 canvas (capped for mobile canvas limits)
         const pad = Math.round(Math.max(raw.width, raw.height) * 0.09);
-        const side = Math.max(raw.width, raw.height) + pad * 2;
+        const side = Math.min(Math.max(raw.width, raw.height) + pad * 2, 4096);
         const out = document.createElement('canvas');
         out.width = side;
         out.height = side;
@@ -868,13 +886,13 @@
         });
 
         const maxW = side - pad * 2;
-        const scale = Math.min(maxW / raw.width, maxW / raw.height);
-        const w = raw.width * scale;
-        const hh = raw.height * scale;
+        const fit = Math.min(maxW / raw.width, maxW / raw.height);
+        const drawW = raw.width * fit;
+        const drawH = raw.height * fit;
         ctx.shadowColor = 'rgba(8,3,10,0.55)';
         ctx.shadowBlur = pad * 0.5;
         ctx.shadowOffsetY = pad * 0.18;
-        ctx.drawImage(raw, (side - w) / 2, (side - hh) / 2, w, hh);
+        ctx.drawImage(raw, (side - drawW) / 2, (side - drawH) / 2, drawW, drawH);
         ctx.shadowColor = 'transparent';
 
         ctx.font = `500 ${Math.round(side * 0.03)}px Caveat, cursive`;
@@ -893,6 +911,8 @@
       } catch (err) {
         showToast('Export failed: ' + err.message);
       } finally {
+        if (clone) clone.remove();
+        document.body.classList.remove('exporting');
         saveBtn.disabled = false;
       }
     });
