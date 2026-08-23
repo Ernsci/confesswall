@@ -196,6 +196,10 @@ app.post("/api/confess", async (req, res) => {
   return res.json({ success: true });
 });
 
+app.get('/otin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/otin.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`Confess Wall running on port ${PORT}`);
 });
