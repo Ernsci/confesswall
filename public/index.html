@@ -3,48 +3,74 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1c1120">
   <title>Confess Wall</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%99%A5%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="wrapper">
+  <div id="sky" aria-hidden="true"></div>
+
+  <div class="wrapper">
     <header class="hero">
-      <h1>Confess Wall</h1>
-      <p>Say what your heart has been holding in.</p>
+      <p class="eyebrow">Confession Wall</p>
+      <h1>Say what your <em>heart</em> has been holding in.</h1>
+      <p class="sub">written here, sealed instantly, delivered softly</p>
     </header>
 
-    <form id="confess-form" class="card" novalidate>
-      <div class="field">
-        <label for="from">Enter your Name</label>
-        <input type="text" id="from" name="from" maxlength="60" placeholder="Your name" autocomplete="off" required>
-        <p class="hint">Don't worry, your identity is safe from us.</p>
-      </div>
+    <main>
+      <section class="letter-wrap">
+        <div class="seal" aria-hidden="true">&#9829;</div>
 
-      <div class="field">
-        <label for="to">To</label>
-        <input type="text" id="to" name="to" maxlength="60" placeholder="Who is this confession for?" autocomplete="off" required>
-      </div>
+        <form id="confess-form" class="card" novalidate>
+          <div class="stamp" aria-hidden="true">with love</div>
 
-      <div class="field">
-        <label for="message">Your Message</label>
-        <textarea id="message" name="message" rows="8" placeholder="Write your confession..." required></textarea>
-        <p class="counter"><span id="word-count">0</span> / 1000 words</p>
-      </div>
+          <div class="postmark" aria-hidden="true">
+            <span class="postmark-city">Confess Wall</span>
+            <span class="postmark-date" id="postmark-date"></span>
+            <span class="postmark-flown">par avion</span>
+          </div>
 
-      <button type="submit" id="submit-btn">Send Confession</button>
+          <div class="field">
+            <label for="from">Enter your Name</label>
+            <input type="text" id="from" name="from" maxlength="60" placeholder="Your name" autocomplete="off" required>
+            <p class="hint">Don't worry, your identity is safe from us.</p>
+          </div>
 
-      <p class="status" id="status" role="alert" hidden></p>
-    </form>
+          <div class="field">
+            <label for="to">To</label>
+            <input type="text" id="to" name="to" maxlength="60" placeholder="Who is this confession for?" autocomplete="off" required>
+          </div>
 
-    <section class="card success-card" id="success-card" hidden>
-      <div class="success-icon">&#10084;</div>
-      <h2>Your confession has been sent</h2>
-      <p>Thank you for opening up.</p>
-      <button type="button" id="another-btn">Send another</button>
-    </section>
+          <div class="field">
+            <label for="message">Your Message</label>
+            <textarea id="message" name="message" rows="8" placeholder="Write your confession..." required></textarea>
+            <div class="counter-row">
+              <span class="counter-label">max 1000 words</span>
+              <span class="counter"><span id="word-count">0</span> / 1000</span>
+            </div>
+            <div class="meter" aria-hidden="true"><span id="word-meter"></span></div>
+          </div>
 
-    <footer class="footnote">Be kind with your words.</footer>
-  </main>
+          <button type="submit" id="submit-btn" class="btn">Seal &amp; Send</button>
+
+          <p class="status" id="status" role="alert" hidden></p>
+        </form>
+
+        <section class="card success-card" id="success-card" hidden>
+          <div class="pulse-heart" aria-hidden="true">&#9829;</div>
+          <h2>Your confession has been sent.</h2>
+          <p class="success-note">it's out there now &mdash; wrapped safely</p>
+          <button type="button" id="another-btn" class="ghost-btn">Write another</button>
+        </section>
+      </section>
+    </main>
+
+    <footer class="footnote">be gentle out there &#183; sealed with kindness</footer>
+  </div>
 
   <script src="script.js"></script>
 </body>
