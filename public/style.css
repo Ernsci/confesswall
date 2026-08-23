@@ -378,6 +378,7 @@ textarea {
   min-height: 190px;
   line-height: 26px;
   padding-top: 4px;
+  font-family: "Playfair Display", Georgia, serif;
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
