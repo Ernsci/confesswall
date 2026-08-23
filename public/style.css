@@ -26,11 +26,16 @@
   color: #fff7ee;
 }
 
-.creator-btn {
+.corner-nav {
   position: fixed;
   top: 16px;
   left: 16px;
   z-index: 10;
+  display: flex;
+  gap: 8px;
+}
+
+.creator-btn {
   padding: 6px 15px;
   border-radius: 999px;
   border: 1px solid rgba(148, 158, 180, 0.3);
