@@ -45,6 +45,6 @@ module.exports = {
   },
 
   exactOnly: [
-    "raped", "raping", "rapist", "cumming", "nudes", "horny", "prick", "bilat"
+    "raped", "raping", "rapist", "cumming", "nudes", "horny", "prick", "bilat", "secret"
   ]
 };
