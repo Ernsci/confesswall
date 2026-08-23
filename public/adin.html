@@ -213,11 +213,16 @@
     /* export mode: keep the wax seal fully inside the captured frame */
     .big-letter.export-mode { padding-top: 92px; }
     .big-letter.export-mode .seal { top: 20px; }
+    .big-letter.export-mode,
+    .big-letter.export-mode * {
+      animation: none !important;
+      transition: none !important;
+    }
     .offscreen {
       position: fixed !important;
       left: -12000px !important;
       top: 0 !important;
-      visibility: hidden;
+      z-index: -1;
     }
 
     /* ---------- Responsive ---------- */
@@ -424,8 +429,17 @@
         clone.style.width = bigLetter.offsetWidth + 'px';
         document.body.appendChild(clone);
 
-        const raw = await html2canvas(clone, { useCORS: true, scale: 2, logging: false });
+        const raw = await html2canvas(clone, {
+          useCORS: true,
+          scale: 2,
+          logging: false,
+          backgroundColor: '#fdf6ea'
+        });
         clone.remove();
+
+        if (!raw || !raw.width || !raw.height) {
+          throw new Error('capture was empty');
+        }
 
         // composite onto a 1:1 canvas
         const pad = Math.round(Math.max(raw.width, raw.height) * 0.09);
