@@ -404,6 +404,10 @@ app.get('/adin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/adin.html'));
 });
 
+app.get('/creator', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/creator.html'));
+});
+
 app.get('/admin/data', async (req, res) => {
   if (!adminAuth(req, res)) return;
   const { data, error } = await supabase

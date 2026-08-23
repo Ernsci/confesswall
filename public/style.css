@@ -26,6 +26,29 @@
   color: #fff7ee;
 }
 
+.creator-btn {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+  padding: 6px 15px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 158, 180, 0.3);
+  color: #8b93a7;
+  font-family: "Caveat", cursive;
+  font-size: 1.02rem;
+  line-height: 1;
+  text-decoration: none;
+  background: rgba(13, 13, 18, 0.55);
+  transition: color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.creator-btn:hover {
+  color: #b8c0d2;
+  border-color: rgba(148, 158, 180, 0.55);
+  box-shadow: 0 0 14px rgba(120, 134, 162, 0.25);
+}
+
 html {
   scrollbar-color: var(--rose-deep) var(--night-1);
 }

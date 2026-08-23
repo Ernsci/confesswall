@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>the creator · IT KNOWS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.25rem;
+      font-family: "Fraunces", Georgia, serif;
+      color: #8b93a7;
+      background:
+        radial-gradient(900px 600px at 50% -20%, rgba(90, 104, 134, 0.12), transparent 60%),
+        linear-gradient(#0c0c11, #101018 70%);
+      position: relative;
+    }
+
+    /* faint scanlines */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent 3px,
+        rgba(255, 255, 255, 0.015) 3px,
+        rgba(255, 255, 255, 0.015) 4px
+      );
+    }
+
+    /* vignette */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(120% 100% at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.6));
+    }
+
+    .wrap { position: relative; z-index: 1; width: 100%; max-width: 680px; text-align: center; }
+
+    .status {
+      font-size: 0.68rem;
+      letter-spacing: 0.34em;
+      text-indent: 0.34em;
+      text-transform: uppercase;
+      color: #5d6577;
+      margin-bottom: 1.1rem;
+      animation: flicker 4.5s infinite;
+    }
+    .status b { color: #98a3ba; font-weight: 600; }
+
+    h1 {
+      margin: 0 0 1.6rem;
+      font-weight: 350;
+      font-size: clamp(1.9rem, 5vw, 2.7rem);
+      line-height: 1.15;
+      color: #aeb6c8;
+      position: relative;
+      display: inline-block;
+    }
+    h1 .broken-word {
+      display: inline-block;
+      font-style: italic;
+      color: #7f8aa3;
+      animation: glitch 3.1s infinite steps(1);
+    }
+
+    @keyframes glitch {
+      0%, 88%, 100% { transform: none; text-shadow: none; clip-path: none; }
+      89% { transform: translateX(-2px); text-shadow: 2px 0 rgba(140, 160, 200, 0.55), -2px 0 rgba(60, 70, 95, 0.55); }
+      91% { transform: translateX(2px) skewX(-4deg); text-shadow: -3px 0 rgba(140, 160, 200, 0.5), 3px 0 rgba(60, 70, 95, 0.5); }
+      93% { transform: none; text-shadow: 1px 0 rgba(140, 160, 200, 0.35); }
+      96% { transform: translateY(1px); clip-path: inset(30% 0 40% 0); }
+    }
+
+    @keyframes flicker {
+      0%, 92%, 100% { opacity: 1; }
+      93% { opacity: 0.45; }
+      95% { opacity: 0.85; }
+      97% { opacity: 0.5; }
+    }
+
+    .video-frame {
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(148, 158, 180, 0.14);
+      box-shadow: 0 30px 70px rgba(0, 0, 0, 0.65);
+      background: #000;
+      animation: flicker 6s infinite reverse;
+    }
+    video { display: block; width: 100%; max-height: 62vh; object-fit: contain; background: #000; }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(8, 8, 13, 0.72);
+    }
+    .overlay.hidden { display: none; }
+    .play-btn {
+      padding: 0.8rem 1.9rem;
+      border-radius: 999px;
+      cursor: pointer;
+      background: transparent;
+      border: 1.5px solid rgba(148, 158, 180, 0.45);
+      color: #b8c0d2;
+      font-family: inherit;
+      font-size: 0.95rem;
+      letter-spacing: 0.06em;
+      transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+    }
+    .play-btn:hover { border-color: #98a3ba; color: #dfe4ee; background: rgba(148, 158, 180, 0.08); }
+    button:focus-visible { outline: 3px solid #98a3ba; outline-offset: 3px; }
+
+    .caption {
+      margin-top: 1.7rem;
+      font-family: "Caveat", cursive;
+      font-size: clamp(1.45rem, 3.4vw, 1.8rem);
+      color: #79818f;
+      transform: rotate(-0.7deg);
+      line-height: 1.35;
+    }
+    .caption em { color: #667085; font-style: normal; border-bottom: 1px dashed rgba(120, 130, 150, 0.4); }
+
+    .back {
+      display: inline-block;
+      margin-top: 2.4rem;
+      font-family: "Caveat", cursive;
+      font-size: 1.15rem;
+      color: #5d6577;
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+    .back:hover { color: #98a3ba; }
+
+    .missing-note { color: #5d6577; font-size: 0.85rem; padding: 2.4rem 1rem; font-style: italic; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .status, .video-frame, h1 .broken-word { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="status">status&nbsp;·&nbsp;<b>operational, barely</b></p>
+
+    <h1>the creator is <span class="broken-word">broken</span></h1>
+
+    <div class="video-frame">
+      <video id="creator-video" src="/video.mp4" playsinline preload="auto"></video>
+      <div class="overlay hidden" id="play-overlay">
+        <button type="button" class="play-btn" id="play-btn">&#9654;&nbsp; play with sound</button>
+      </div>
+    </div>
+
+    <p class="caption">&#8230;and tired<em> to fix some bugs.</em></p>
+
+    <a class="back" href="/">&larr; back to the wall</a>
+  </div>
+
+  <script>
+    const video = document.getElementById('creator-video');
+    const overlay = document.getElementById('play-overlay');
+    const playBtn = document.getElementById('play-btn');
+
+    video.volume = 1;
+
+    video.addEventListener('error', () => {
+      const note = document.createElement('p');
+      note.className = 'missing-note';
+      note.textContent = '(video.mp4 is missing — drop it into the public folder)';
+      video.replaceWith(note);
+      overlay.remove();
+    });
+
+    // try autoplay with sound; browsers may refuse until first interaction
+    const attempt = video.play();
+    if (attempt) {
+      attempt.then(() => {}).catch(() => overlay.classList.remove('hidden'));
+    } else {
+      overlay.classList.remove('hidden');
+    }
+
+    playBtn.addEventListener('click', () => {
+      video.play().then(() => overlay.classList.add('hidden')).catch(() => {});
+    });
+  </script>
+</body>
+</html>
