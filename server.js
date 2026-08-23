@@ -1,5 +1,6 @@
 require("dotenv").config();
 const path = require("path");
+const crypto = require("crypto");
 const express = require("express");
 const { createClient } = require("@supabase/supabase-js");
 const config = require("./config");
@@ -17,6 +18,11 @@ const submissions = new Map();
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'chaddy';
+const IP_HASH_SECRET = process.env.IP_HASH_SECRET || "dev-insecure-salt";
+
+function hashIp(ip) {
+  return crypto.createHash("sha256").update(`${IP_HASH_SECRET}:${ip}`).digest("hex").slice(0, 32);
+}
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment.");
@@ -28,15 +34,45 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 // Bad word filter
 const LEET_CHARS = { "4": "a", "@": "a", "8": "b", "3": "e", "1": "i", "!": "i", "0": "o", "5": "s", "$": "s", "7": "t", "+": "t", "9": "g" };
 const SUFFIXES = ["s", "es", "ed", "ing", "er", "ers"];
+const ZERO_WIDTH = /[\u200b-\u200f\u2028\u2029\u2060-\u2064\ufeff]/g;
+const HOMOGLYPHS = {
+  "\u0430": "a", "\u0435": "e", "\u043e": "o", "\u0440": "p", "\u0441": "c",
+  "\u0445": "x", "\u0443": "y", "\u0456": "i", "\u0455": "s", "\u043a": "k",
+  "\u043c": "m", "\u0442": "t", "\u0432": "b", "\u043d": "h", "\u0501": "d",
+  "\u03bf": "o", "\u03b1": "a", "\u03b5": "e", "\u03b9": "i", "\u03ba": "k",
+  "\u03c1": "p", "\u03c4": "t", "\u03c5": "u", "\u03bd": "v"
+};
+const HOMOGLYPH_RE = new RegExp(`[${Object.keys(HOMOGLYPHS).join("")}]`, "g");
 
 function normalizeText(text) {
-  return text
+  return String(text)
     .toLowerCase()
+    .replace(ZERO_WIDTH, "")
+    .normalize("NFKC")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(HOMOGLYPH_RE, (ch) => HOMOGLYPHS[ch])
     .replace(/[4@83!10$57+9]/g, (ch) => LEET_CHARS[ch])
+    .replace(/ph/g, "f")
     .replace(/[^a-z]+/g, " ")
     .trim();
+}
+
+// join runs of >=3 single-letter tokens ("f u c k" -> "fuck") for matching only
+function collapseSpacedLetters(tokens) {
+  const out = [];
+  let run = [];
+  const flush = () => {
+    if (run.length >= 3) out.push(run.join(""));
+    else out.push(...run);
+    run = [];
+  };
+  for (const t of tokens) {
+    if (t.length === 1) run.push(t);
+    else { flush(); out.push(t); }
+  }
+  flush();
+  return out;
 }
 
 const exactOnly = new Set((config.exactOnly || []).map((w) => normalizeText(w)));
@@ -71,26 +107,62 @@ function stripSuffixes(word) {
   return current;
 }
 
-function containsBadWord(text) {
+function withinOneEdit(a, b) {
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0, j = 0, edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { i++; j++; continue; }
+    if (++edits > 1) return false;
+    // treat adjacent transposition as a single edit
+    if (
+      i + 1 < a.length && j + 1 < b.length &&
+      a[i] === b[j + 1] && a[i + 1] === b[j]
+    ) {
+      i += 2; j += 2; continue;
+    }
+    if (a.length === b.length) { i++; j++; }
+    else if (a.length > b.length) i++;
+    else j++;
+  }
+  edits += a.length - i + b.length - j;
+  return edits <= 1;
+}
+
+// returns the list of matched terms (may be empty)
+function findBadWords(text) {
+  const matches = [];
+  const push = (term) => {
+    if (term && !matches.includes(term) && matches.length < 10) matches.push(term);
+  };
+
   const normalized = normalizeText(text);
-  if (!normalized) return false;
+  if (!normalized) return matches;
 
   for (const phrase of blockedPhrases) {
-    if (normalized.includes(phrase)) return true;
+    if (normalized.includes(phrase)) push(phrase);
   }
 
-  for (const token of normalized.split(" ")) {
+  const tokens = collapseSpacedLetters(normalized.split(" "));
+  for (const token of tokens) {
     const collapsed = token.replace(/(.)\1+/g, "$1");
-    if (strictWords.has(token)) return true;
-    if (strictWords.has(collapsed)) return true;
+    if (strictWords.has(token)) { push(token); continue; }
+    if (strictWords.has(collapsed)) { push(collapsed); continue; }
     const stemmed = stripSuffixes(collapsed);
-    if (strictWords.has(stemmed)) return true;
+    if (strictWords.has(stemmed)) { push(stemmed); continue; }
     for (const word of looseWords) {
-      if (collapsed.includes(word)) return true;
+      if (token.includes(word) || collapsed.includes(word)) { push(word); continue; }
+      if (
+        config.fuzzyEnabled &&
+        !matches.includes(word) &&
+        word.length >= config.fuzzyMinLen && token.length >= config.fuzzyMinLen &&
+        (withinOneEdit(token, word) || withinOneEdit(collapsed, word))
+      ) {
+        push(word);
+      }
     }
   }
 
-  return false;
+  return matches;
 }
 
 app.use(express.json());
@@ -125,6 +197,38 @@ function formatDateTime(date) {
   }).format(date);
 }
 
+async function logBlockedAttempt(ipHash, from, to, message, matches) {
+  try {
+    const since = new Date(Date.now() - 3600_000).toISOString();
+    const { count } = await supabase
+      .from("blocked_attempts")
+      .select("*", { count: "exact", head: true })
+      .eq("ip_hash", ipHash)
+      .gte("created_at", since);
+
+    if ((count || 0) >= config.blockedLogCapPerHour) return;
+
+    const { error } = await supabase.from("blocked_attempts").insert({
+      ip_hash: ipHash,
+      sender_name: from || null,
+      recipient_name: to || null,
+      message_excerpt: String(message || "").slice(0, 300),
+      matched_words: matches.slice(0, 10),
+      created_at: new Date().toISOString()
+    });
+    if (error) console.error("Failed to log blocked attempt:", error.message);
+
+    if (Math.random() < 0.1) {
+      const cutoff = new Date(Date.now() - config.blockedRetentionDays * 86400_000).toISOString();
+      supabase.from("blocked_attempts").delete().lt("created_at", cutoff)
+        .then(({ error: purgeErr }) => { if (purgeErr) console.error("Retention purge failed:", purgeErr.message); })
+        .catch(() => {});
+    }
+  } catch (err) {
+    console.error("logBlockedAttempt failed:", err.message);
+  }
+}
+
 app.post("/api/confess", async (req, res) => {
   if (!DISCORD_WEBHOOK_URL) {
     return res.status(500).json({
@@ -145,6 +249,36 @@ app.post("/api/confess", async (req, res) => {
     });
   }
 
+  // Persisted hourly/daily caps per person
+  const thisHash = hashIp(ip);
+  try {
+    const { data: recent, error: rateErr } = await supabase
+      .from("rate_events")
+      .select("created_at")
+      .eq("ip_hash", thisHash)
+      .gte("created_at", new Date(now - 86400_000).toISOString());
+
+    if (rateErr) {
+      console.error("Rate cap check failed:", rateErr.message);
+    } else if (Array.isArray(recent)) {
+      const hourCount = recent.filter(r => new Date(r.created_at).getTime() >= now - 3600_000).length;
+      if (hourCount >= config.hourlyCap) {
+        return res.status(429).json({
+          success: false,
+          error: "You've sent quite a few confessions already — please wait a little while."
+        });
+      }
+      if (recent.length >= config.dailyCap) {
+        return res.status(429).json({
+          success: false,
+          error: "You've reached today's confession limit. Come back tomorrow."
+        });
+      }
+    }
+  } catch (err) {
+    console.error("Rate cap check error:", err.message);
+  }
+
   const from = sanitizeName(req.body.from, 60);
   const to = sanitizeName(req.body.to, 60);
   const rawMessage =
@@ -161,7 +295,16 @@ app.post("/api/confess", async (req, res) => {
     });
   }
 
-  if (containsBadWord(from) || containsBadWord(to) || containsBadWord(rawMessage)) {
+  const matchedWords = [
+    ...new Set([
+      ...findBadWords(from),
+      ...findBadWords(to),
+      ...findBadWords(rawMessage)
+    ])
+  ];
+
+  if (matchedWords.length > 0) {
+    logBlockedAttempt(thisHash, from, to, rawMessage, matchedWords);
     return res.status(400).json({ success: false, error: config.blockedMessage });
   }
 
@@ -200,6 +343,13 @@ app.post("/api/confess", async (req, res) => {
     });
   }
 
+  submissions.set(ip, now);
+  if (submissions.size > 2000) {
+    for (const [key, ts] of submissions) {
+      if (now - ts > RATE_LIMIT_MS) submissions.delete(key);
+    }
+  }
+
   // Save to Supabase (best-effort: Discord delivery already succeeded)
   const { error: dbError } = await supabase.from("confessions").insert({
     sender_name: from,
@@ -230,6 +380,17 @@ app.post("/api/confess", async (req, res) => {
         priority: 4
       })
     }).catch(err => console.error("ntfy push failed:", err.message));
+  }
+
+  // record the accepted confession against the person's caps (best-effort)
+  supabase.from("rate_events").insert({ ip_hash: thisHash, created_at: new Date(now).toISOString() })
+    .then(({ error: rateInsertErr }) => { if (rateInsertErr) console.error("Rate event insert failed:", rateInsertErr.message); })
+    .catch(() => {});
+  if (Math.random() < 0.05) {
+    const cutoff = new Date(now - 25 * 3600_000).toISOString();
+    supabase.from("rate_events").delete().lt("created_at", cutoff)
+      .then(({ error: purgeErr }) => { if (purgeErr) console.error("Rate purge failed:", purgeErr.message); })
+      .catch(() => {});
   }
 
   return res.json({ success: true });
@@ -314,6 +475,30 @@ app.post("/admin/data/:id/posted", async (req, res) => {
     return res.status(500).json({ error: "Update failed." });
   }
   res.json({ success: true });
+});
+
+app.get("/admin/blocked", async (req, res) => {
+  if (!adminAuth(req, res)) return;
+  const limit = Math.min(Number(req.query.limit) || 100, 200);
+  const { data, error } = await supabase
+    .from("blocked_attempts")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("Failed to load blocked attempts:", error.message);
+    return res.status(500).json({ error: "Could not load blocked attempts." });
+  }
+
+  res.json(data.map(r => ({
+    id: r.id,
+    from: r.sender_name || "",
+    to: r.recipient_name || "",
+    excerpt: r.message_excerpt || "",
+    words: r.matched_words || [],
+    date: r.created_at
+  })));
 });
 
 app.listen(PORT, () => {

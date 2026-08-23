@@ -1,7 +1,13 @@
 module.exports = {
   maxWords: 1000,
   rateLimitMs: 30 * 1000,
+  hourlyCap: 3,
+  dailyCap: 10,
   blockedMessage: "Your confession contains words we can't deliver. Please rewrite it with kindness.",
+  blockedLogCapPerHour: 20,
+  blockedRetentionDays: 14,
+  fuzzyEnabled: true,
+  fuzzyMinLen: 7,
 
   badWords: {
     english: [

@@ -202,6 +202,44 @@
     .export-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
     .hint-line { margin: 0.8rem 0 0; font-family: "Caveat", cursive; font-size: 1.05rem; color: var(--text-muted); }
 
+    /* view toggle */
+    .view-toggle { display: flex; gap: 6px; margin-left: auto; }
+    .view-btn {
+      padding: 7px 16px; border-radius: 999px; cursor: pointer;
+      background: transparent; color: var(--text-muted);
+      border: 1px solid rgba(255,255,255,0.14);
+      font-family: inherit; font-size: 0.85rem;
+      transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+    .view-btn:hover { color: var(--text); }
+    .view-btn.active { color: #fff7ee; border-color: var(--rose); background: rgba(217,79,116,0.18); }
+
+    /* blocked attempts view */
+    .blocked-view { animation: rise 0.5s ease both; }
+    .blocked-empty {
+      text-align: center; font-family: "Caveat", cursive; font-size: 1.4rem;
+      color: var(--text-muted); padding: 2rem;
+      border: 1.5px dashed rgba(255,255,255,0.14); border-radius: 14px;
+    }
+    .blocked-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.2rem; }
+    .blocked-card {
+      background: var(--card-bg); border: 1px solid rgba(224,82,110,0.35);
+      border-radius: 12px; padding: 1.2rem 1.3rem;
+    }
+    .blocked-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 0.4rem; }
+    .blocked-from { font-weight: 600; color: #ff9db2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .blocked-date { font-size: 0.72rem; color: var(--text-muted); flex: none; }
+    .blocked-route { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.6rem; }
+    .blocked-excerpt {
+      font-family: "Caveat", cursive; font-size: 1.08rem; line-height: 1.45;
+      color: var(--text); opacity: 0.92; word-break: break-word;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0.7rem; }
+    .chip {
+      font-size: 0.72rem; letter-spacing: 0.04em; padding: 3px 10px; border-radius: 999px;
+      background: rgba(217,79,116,0.15); border: 1px solid rgba(217,79,116,0.45); color: #ff9db2;
+    }
+
     .icon-btn {
       display: inline-flex; align-items: center; gap: 8px;
       padding: 0.72rem 1.3rem; border-radius: 999px;
@@ -291,10 +329,14 @@
     <div class="topbar">
       <h1>Confessions <em>&amp; letters</em></h1>
       <span class="count-pill" id="confession-count">0 total</span>
-      <button class="logout-btn" id="logout">Logout</button>
+      <div class="view-toggle">
+        <button type="button" id="view-letters" class="view-btn active">Letters</button>
+        <button type="button" id="view-blocked" class="view-btn">Blocked</button>
+      </div>
+      <button type="button" class="logout-btn" id="logout">Logout</button>
     </div>
 
-    <div class="layout">
+    <div class="layout" id="letters-layout">
       <nav class="tabs" id="tabs" aria-label="Confessions by sender"></nav>
 
       <section class="stage">
@@ -313,12 +355,12 @@
         </article>
 
         <div class="stage-actions">
-          <button class="export-btn" id="save-png" disabled>Save this letter as PNG</button>
-          <button class="icon-btn danger" id="delete-btn" disabled>
+          <button type="button" class="export-btn" id="save-png" disabled>Save this letter as PNG</button>
+          <button type="button" class="icon-btn danger" id="delete-btn" disabled>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
             Delete
           </button>
-          <button class="icon-btn success" id="done-btn" disabled>
+          <button type="button" class="icon-btn success" id="done-btn" disabled>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
             <span id="done-label">Done</span>
           </button>
@@ -326,6 +368,11 @@
         <p class="hint-line">tip: Done turns a sender green once you've posted their confession</p>
       </section>
     </div>
+
+    <section class="blocked-view" id="blocked-view" hidden>
+      <p class="blocked-empty" id="blocked-empty">No blocked attempts. The filter is lonely &#9829;</p>
+      <div class="blocked-grid" id="blocked-grid"></div>
+    </section>
   </div>
 
   <div class="toast" id="toast" role="status"></div>
@@ -352,6 +399,15 @@
     const doneBtn = document.getElementById('done-btn');
     const doneLabel = document.getElementById('done-label');
     const toast = document.getElementById('toast');
+    const viewLettersBtn = document.getElementById('view-letters');
+    const viewBlockedBtn = document.getElementById('view-blocked');
+    const lettersLayout = document.getElementById('letters-layout');
+    const blockedViewEl = document.getElementById('blocked-view');
+    const blockedGrid = document.getElementById('blocked-grid');
+    const blockedEmpty = document.getElementById('blocked-empty');
+
+    let blockedLoaded = false;
+    let currentView = 'letters';
 
     let confessions = [];
     let selected = null;
@@ -387,6 +443,74 @@
       toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), 2200);
     }
+
+    function switchView(mode) {
+      currentView = mode;
+      const letters = mode === 'letters';
+      viewLettersBtn.classList.toggle('active', letters);
+      viewBlockedBtn.classList.toggle('active', !letters);
+      lettersLayout.hidden = !letters;
+      blockedViewEl.hidden = letters;
+      if (!letters && !blockedLoaded) loadBlocked();
+    }
+
+    async function loadBlocked() {
+      blockedGrid.innerHTML = '';
+      blockedEmpty.style.display = 'flex';
+      try {
+        const res = await fetch('/admin/blocked', {
+          headers: { 'x-admin-password': adminPassword }
+        });
+        if (!res.ok) throw new Error();
+        const items = await res.json();
+        blockedLoaded = true;
+        if (items.length === 0) return;
+        blockedEmpty.style.display = 'none';
+        for (const item of items) {
+          const card = document.createElement('div');
+          card.className = 'blocked-card';
+
+          const head = document.createElement('div');
+          head.className = 'blocked-head';
+          const who = document.createElement('span');
+          who.className = 'blocked-from';
+          who.textContent = item.from || 'Anonymous';
+          const when = document.createElement('span');
+          when.className = 'blocked-date';
+          when.textContent = new Date(item.date).toLocaleString();
+          head.append(who, when);
+
+          const route = document.createElement('div');
+          route.className = 'blocked-route';
+          route.textContent = `to: ${item.to || '?'}`;
+
+          const body = document.createElement('div');
+          body.className = 'blocked-excerpt';
+          body.textContent = item.excerpt || '(no message)';
+
+          card.append(head, route, body);
+
+          if (Array.isArray(item.words) && item.words.length > 0) {
+            const chips = document.createElement('div');
+            chips.className = 'chips';
+            for (const w of item.words) {
+              const chip = document.createElement('span');
+              chip.className = 'chip';
+              chip.textContent = w;
+              chips.appendChild(chip);
+            }
+            card.appendChild(chips);
+          }
+
+          blockedGrid.appendChild(card);
+        }
+      } catch {
+        showToast('Could not load blocked attempts.');
+      }
+    }
+
+    viewLettersBtn.addEventListener('click', () => switchView('letters'));
+    viewBlockedBtn.addEventListener('click', () => switchView('blocked'));
 
     function renderTabs() {
       tabsEl.innerHTML = '';
@@ -471,6 +595,8 @@
       confessions = [];
       selected = null;
       adminPassword = '';
+      blockedLoaded = false;
+      blockedGrid.innerHTML = '';
       tabsEl.innerHTML = '';
       bigLetter.hidden = true;
       saveBtn.disabled = true;
@@ -481,6 +607,7 @@
       passwordInput.value = '';
       dashboard.style.display = 'none';
       authScreen.style.display = 'flex';
+      switchView('letters');
     });
 
     deleteBtn.addEventListener('click', async () => {
