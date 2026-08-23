@@ -24,7 +24,7 @@ module.exports = {
       "faggot", "faggots", "dyke", "dykes", "tranny", "trannies",
       "chink", "chinks", "gook", "gooks", "wetback", "wetbacks",
       "retard", "retards", "retarded",
-      "damn", "dammit"
+      "damn", "dammit" , "secret"
     ],
 
     tagalog: [
@@ -45,6 +45,6 @@ module.exports = {
   },
 
   exactOnly: [
-    "raped", "raping", "rapist", "cumming", "nudes", "horny", "prick", "bilat", "secret"
+    "raped", "raping", "rapist", "cumming", "nudes", "horny", "prick", "bilat"
   ]
 };

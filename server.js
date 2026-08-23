@@ -1,6 +1,7 @@
 require("dotenv").config();
 const path = require("path");
 const express = require("express");
+const { createClient } = require("@supabase/supabase-js");
 const config = require("./config");
 
 const app = express();
@@ -11,8 +12,17 @@ const TIMEZONE = process.env.TIMEZONE || "UTC";
 const MAX_WORDS = config.maxWords;
 const RATE_LIMIT_MS = config.rateLimitMs;
 const submissions = new Map();
-const adminConfessions = [];
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'chaddy';
+
+// Supabase setup
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment.");
+  process.exit(1);
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Bad word filter
 const LEET_CHARS = { "4": "a", "@": "a", "8": "b", "3": "e", "1": "i", "!": "i", "0": "o", "5": "s", "$": "s", "7": "t", "+": "t", "9": "g" };
@@ -189,21 +199,17 @@ app.post("/api/confess", async (req, res) => {
     });
   }
 
-  submissions.set(ip, now);
-  if (submissions.size > 2000) {
-    for (const [key, ts] of submissions) {
-      if (now - ts > RATE_LIMIT_MS) submissions.delete(key);
-    }
-  }
-
-  // Save to admin panel
-  adminConfessions.push({
-    from,
-    to,
+  // Save to Supabase (best-effort: Discord delivery already succeeded)
+  const { error: dbError } = await supabase.from("confessions").insert({
+    sender_name: from,
+    recipient_name: to,
     message: rawMessage,
-    date: formatDateTime(nowDate)
+    date_display: formatDateTime(nowDate)
   });
-  if (adminConfessions.length > 20) adminConfessions.shift();
+
+  if (dbError) {
+    console.error("Failed to save confession to database:", dbError.message);
+  }
 
   return res.json({ success: true });
 });
@@ -212,8 +218,24 @@ app.get('/adin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/adin.html'));
 });
 
-app.get('/admin/data', (req, res) => {
-  res.json(adminConfessions);
+app.get('/admin/data', async (req, res) => {
+  const { data, error } = await supabase
+    .from("confessions")
+    .select("sender_name, recipient_name, message, date_display, created_at")
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  if (error) {
+    console.error("Failed to fetch confessions:", error.message);
+    return res.status(500).json({ error: "Could not load confessions." });
+  }
+
+  res.json(data.map(r => ({
+    from: r.sender_name,
+    to: r.recipient_name,
+    message: r.message,
+    date: r.date_display
+  })));
 });
 
 app.listen(PORT, () => {
