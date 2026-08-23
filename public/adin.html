@@ -303,32 +303,6 @@
     }
     .toast.show { transform: translate(-50%, 0); opacity: 1; }
 
-    /* export mode: keep the wax seal fully inside the captured frame */
-    .big-letter.export-mode {
-      padding-top: 92px;
-      background-image: linear-gradient(#fdf6ea, #f3e5cd);
-    }
-    .big-letter.export-mode .seal { top: 20px; }
-    .big-letter.export-mode,
-    .big-letter.export-mode * {
-      animation: none !important;
-      transition: none !important;
-    }
-    .offscreen {
-      position: fixed !important;
-      left: -12000px !important;
-      top: 0 !important;
-      z-index: -1;
-    }
-
-    /* while exporting, strip everything except the letter stage */
-    body.exporting .topbar,
-    body.exporting .toolbar,
-    body.exporting .stats-strip,
-    body.exporting .tabs,
-    body.exporting .blocked-view,
-    body.exporting .toast { display: none !important; }
-
     /* ---------- Responsive ---------- */
     @media (max-width: 760px) {
       .layout { grid-template-columns: 1fr; }
@@ -1030,7 +1004,6 @@
       } catch (err) {
         showToast('Export failed: ' + err.message);
       } finally {
-        document.body.classList.remove('exporting');
         saveBtn.disabled = false;
       }
     });
