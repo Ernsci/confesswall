@@ -528,6 +528,44 @@ app.get("/admin/blocked", async (req, res) => {
   })));
 });
 
+app.get("/admin/stats", async (req, res) => {
+  if (!adminAuth(req, res)) return;
+
+  const stats = { total: 0, posted: 0, blockedTotal: 0, blockedToday: 0, topOffenders: [] };
+  const dayAgo = new Date(Date.now() - 86400_000).toISOString();
+
+  try {
+    const [totalR, postedR, blockedTotalR, blockedTodayR] = await Promise.all([
+      supabase.from("confessions").select("*", { count: "exact", head: true }),
+      supabase.from("confessions").select("*", { count: "exact", head: true }).eq("posted", true),
+      supabase.from("blocked_attempts").select("*", { count: "exact", head: true }),
+      supabase.from("blocked_attempts").select("*", { count: "exact", head: true }).gte("created_at", dayAgo)
+    ]);
+
+    stats.total = totalR.count || 0;
+    stats.posted = postedR.count || 0;
+    stats.blockedTotal = blockedTotalR.count || 0;
+    stats.blockedToday = blockedTodayR.count || 0;
+
+    const { data: rows } = await supabase
+      .from("blocked_attempts")
+      .select("ip_hash")
+      .order("created_at", { ascending: false })
+      .limit(2000);
+
+    const tally = {};
+    for (const r of rows || []) tally[r.ip_hash] = (tally[r.ip_hash] || 0) + 1;
+    stats.topOffenders = Object.entries(tally)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([hash, count]) => ({ ip: `${hash.slice(0, 8)}…`, count }));
+  } catch (err) {
+    console.error("Stats query failed:", err.message);
+  }
+
+  res.json(stats);
+});
+
 app.listen(PORT, () => {
   console.log(`Confess Wall running on port ${PORT}`);
 });

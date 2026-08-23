@@ -214,6 +214,37 @@
     .view-btn:hover { color: var(--text); }
     .view-btn.active { color: #fff7ee; border-color: var(--rose); background: rgba(217,79,116,0.18); }
 
+    /* stats strip + search toolbar */
+    .stats-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem; animation: rise 0.5s 0.08s ease both; }
+    .stat {
+      font-size: 0.78rem; color: var(--text-muted);
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 999px; padding: 4px 13px;
+    }
+    .stat b { color: var(--gold); font-weight: 600; margin-right: 5px; }
+    .toolbar { display: flex; gap: 0.8rem; margin-bottom: 1.1rem; flex-wrap: wrap; align-items: center; animation: rise 0.5s 0.1s ease both; }
+    .toolbar input[type="search"] {
+      flex: 1; min-width: 180px; padding: 0.62rem 1rem;
+      border-radius: 999px; border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.25); color: var(--text);
+      font-family: inherit; font-size: 0.92rem;
+      transition: border-color 0.15s ease;
+    }
+    .toolbar input[type="search"]:focus { outline: none; border-color: var(--rose); box-shadow: 0 0 0 3px rgba(217,79,116,0.18); }
+    .filter-group { display: flex; gap: 6px; }
+    .filter-btn {
+      padding: 7px 15px; border-radius: 999px; cursor: pointer;
+      background: transparent; color: var(--text-muted);
+      border: 1px solid rgba(255,255,255,0.14);
+      font-family: inherit; font-size: 0.82rem;
+      transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+    .filter-btn:hover { color: var(--text); }
+    .filter-btn.active { color: #fff7ee; border-color: var(--gold); background: rgba(201,151,63,0.16); }
+    .tabs-empty {
+      text-align: center; color: var(--text-muted);
+      font-family: "Caveat", cursive; font-size: 1.15rem; padding: 1rem 0.4rem;
+    }
+
     /* blocked attempts view */
     .blocked-view { animation: rise 0.5s ease both; }
     .blocked-empty {
@@ -336,7 +367,17 @@
       <button type="button" class="logout-btn" id="logout">Logout</button>
     </div>
 
-    <div class="layout" id="letters-layout">
+    <div id="letters-view">
+      <div class="stats-strip" id="stats-strip" hidden></div>
+      <div class="toolbar">
+        <input type="search" id="search-input" placeholder="Search name or message…" aria-label="Search confessions">
+        <div class="filter-group" role="group" aria-label="Filter by status">
+          <button type="button" class="filter-btn active" data-filter="all">All</button>
+          <button type="button" class="filter-btn" data-filter="posted">Posted</button>
+          <button type="button" class="filter-btn" data-filter="unposted">Unposted</button>
+        </div>
+      </div>
+      <div class="layout" id="letters-layout">
       <nav class="tabs" id="tabs" aria-label="Confessions by sender"></nav>
 
       <section class="stage">
@@ -367,6 +408,7 @@
         </div>
         <p class="hint-line">tip: Done turns a sender green once you've posted their confession</p>
       </section>
+      </div>
     </div>
 
     <section class="blocked-view" id="blocked-view" hidden>
@@ -401,13 +443,17 @@
     const toast = document.getElementById('toast');
     const viewLettersBtn = document.getElementById('view-letters');
     const viewBlockedBtn = document.getElementById('view-blocked');
-    const lettersLayout = document.getElementById('letters-layout');
+    const lettersViewEl = document.getElementById('letters-view');
     const blockedViewEl = document.getElementById('blocked-view');
     const blockedGrid = document.getElementById('blocked-grid');
     const blockedEmpty = document.getElementById('blocked-empty');
+    const statsStrip = document.getElementById('stats-strip');
+    const searchInput = document.getElementById('search-input');
 
     let blockedLoaded = false;
     let currentView = 'letters';
+    let searchTerm = '';
+    let postedFilter = 'all';
 
     let confessions = [];
     let selected = null;
@@ -449,9 +495,64 @@
       const letters = mode === 'letters';
       viewLettersBtn.classList.toggle('active', letters);
       viewBlockedBtn.classList.toggle('active', !letters);
-      lettersLayout.hidden = !letters;
+      lettersViewEl.hidden = !letters;
       blockedViewEl.hidden = letters;
       if (!letters && !blockedLoaded) loadBlocked();
+    }
+
+    function visibleConfessions() {
+      const term = searchTerm.trim().toLowerCase();
+      return confessions
+        .map((c, i) => ({ c, i }))
+        .filter(({ c }) => {
+          if (postedFilter === 'posted' && !c.posted) return false;
+          if (postedFilter === 'unposted' && c.posted) return false;
+          if (!term) return true;
+          return (
+            (c.from || '').toLowerCase().includes(term) ||
+            (c.to || '').toLowerCase().includes(term) ||
+            (c.message || '').toLowerCase().includes(term)
+          );
+        });
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/admin/stats', {
+          headers: { 'x-admin-password': adminPassword }
+        });
+        if (!res.ok) throw new Error();
+        const s = await res.json();
+        statsStrip.innerHTML = '';
+        const pills = [
+          [s.total, 'letters'],
+          [s.posted, 'posted'],
+          [s.blockedTotal, 'blocked all-time'],
+          [s.blockedToday, 'blocked 24h']
+        ];
+        for (const [num, label] of pills) {
+          const pill = document.createElement('span');
+          pill.className = 'stat';
+          const b = document.createElement('b');
+          b.textContent = num;
+          pill.appendChild(b);
+          pill.appendChild(document.createTextNode(label));
+          statsStrip.appendChild(pill);
+        }
+        for (const o of s.topOffenders || []) {
+          if (!o.count) continue;
+          const pill = document.createElement('span');
+          pill.className = 'stat';
+          const b = document.createElement('b');
+          b.textContent = `${o.count}x`;
+          pill.appendChild(b);
+          pill.appendChild(document.createTextNode(`offender ${o.ip}`));
+          statsStrip.appendChild(pill);
+        }
+        statsStrip.hidden = false;
+      } catch {
+        statsStrip.hidden = true;
+      }
     }
 
     async function loadBlocked() {
@@ -512,9 +613,40 @@
     viewLettersBtn.addEventListener('click', () => switchView('letters'));
     viewBlockedBtn.addEventListener('click', () => switchView('blocked'));
 
+    searchInput.addEventListener('input', () => {
+      searchTerm = searchInput.value;
+      renderTabs();
+    });
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        postedFilter = btn.dataset.filter;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b === btn));
+        renderTabs();
+      });
+    });
+
     function renderTabs() {
       tabsEl.innerHTML = '';
-      confessions.forEach((c, i) => {
+      const visible = visibleConfessions();
+      countPill.textContent = visible.length === confessions.length
+        ? `${confessions.length} total`
+        : `${visible.length} shown · ${confessions.length} total`;
+
+      if (confessions.length === 0) {
+        const note = document.createElement('p');
+        note.className = 'tabs-empty';
+        note.textContent = 'No confessions yet.';
+        tabsEl.appendChild(note);
+        return;
+      }
+      if (visible.length === 0) {
+        const note = document.createElement('p');
+        note.className = 'tabs-empty';
+        note.textContent = 'No matches for this search.';
+        tabsEl.appendChild(note);
+        return;
+      }
+      for (const { c, i } of visible) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'tab';
@@ -537,8 +669,7 @@
         }
         btn.addEventListener('click', () => selectConfession(i, btn));
         tabsEl.appendChild(btn);
-      });
-      countPill.textContent = `${confessions.length} total`;
+      }
     }
 
     function selectConfession(index, tabEl) {
@@ -588,6 +719,7 @@
       authScreen.style.display = 'none';
       dashboard.style.display = 'block';
       renderTabs();
+      loadStats();
       if (confessions.length === 0) {
         emptyNote.innerHTML = 'No confessions yet.<br>they will appear here &#9829;';
       }
@@ -631,6 +763,7 @@
         } else {
           showEmpty('Pick a name on the side<br>to open their letter &#9829;');
         }
+        loadStats();
         showToast('Confession deleted');
       } catch {
         showToast('Delete failed, try again.');
@@ -650,6 +783,7 @@
         c.posted = true;
         syncDoneButton();
         renderTabs();
+        loadStats();
         const tab = tabsEl.querySelector(`[data-index="${selected}"]`);
         if (tab) tab.setAttribute('aria-current', 'true');
         showToast(`${c.from || 'Anonymous'} marked as posted \u2665`);
