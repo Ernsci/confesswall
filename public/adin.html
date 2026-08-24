@@ -219,7 +219,7 @@
       font-size: 0.78rem; color: var(--text-muted);
       border: 1px solid rgba(255,255,255,0.1); border-radius: 999px; padding: 4px 13px;
     }
-    .stat b { color: var(--gold); font-weight: 600; margin-right: 5px; }
+    .stat b { color: var(--gold); font-weight: 600; margin-right: 4px; }
     .toolbar { display: flex; gap: 0.8rem; margin-bottom: 1.1rem; flex-wrap: wrap; align-items: center; animation: rise 0.5s 0.1s ease both; }
     .toolbar input[type="search"] {
       flex: 1; min-width: 180px; padding: 0.62rem 1rem;
@@ -531,8 +531,8 @@
         const pills = [
           [s.total, 'letters'],
           [s.posted, 'posted'],
-          [s.blockedTotal, 'blocked all-time'],
-          [s.blockedToday, 'blocked 24h']
+          [s.blockedTotal, 'blocked · all time'],
+          [s.blockedToday, 'blocked · last 24h']
         ];
         for (const [num, label] of pills) {
           const pill = document.createElement('span');
@@ -540,7 +540,7 @@
           const b = document.createElement('b');
           b.textContent = num;
           pill.appendChild(b);
-          pill.appendChild(document.createTextNode(label));
+          pill.appendChild(document.createTextNode(' \u00A0' + label));
           statsStrip.appendChild(pill);
         }
         for (const o of s.topOffenders || []) {
@@ -548,9 +548,9 @@
           const pill = document.createElement('span');
           pill.className = 'stat';
           const b = document.createElement('b');
-          b.textContent = `${o.count}x`;
+          b.textContent = o.count + 'x';
           pill.appendChild(b);
-          pill.appendChild(document.createTextNode(`offender ${o.ip}`));
+          pill.appendChild(document.createTextNode(' \u00A0offender ' + o.ip));
           statsStrip.appendChild(pill);
         }
         statsStrip.hidden = false;
