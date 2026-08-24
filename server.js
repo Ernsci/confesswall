@@ -575,6 +575,31 @@ app.get("/admin/blocked", async (req, res) => {
   })));
 });
 
+app.delete("/admin/blocked/:id", async (req, res) => {
+  if (!adminAuth(req, res)) return;
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid id." });
+  }
+  const { error } = await supabase.from("blocked_attempts").delete().eq("id", id);
+  if (error) {
+    console.error("Failed to delete blocked attempt:", error.message);
+    return res.status(500).json({ error: "Delete failed." });
+  }
+  res.json({ success: true });
+});
+
+app.delete("/admin/blocked", async (req, res) => {
+  if (!adminAuth(req, res)) return;
+  // neq filter is required by PostgREST to clear every row
+  const { error } = await supabase.from("blocked_attempts").delete().neq("id", 0);
+  if (error) {
+    console.error("Failed to clear blocked attempts:", error.message);
+    return res.status(500).json({ error: "Clear failed." });
+  }
+  res.json({ success: true });
+});
+
 app.get("/admin/stats", async (req, res) => {
   if (!adminAuth(req, res)) return;
 

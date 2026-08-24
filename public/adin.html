@@ -246,6 +246,21 @@
 
     /* blocked attempts view */
     .blocked-view { animation: rise 0.5s ease both; }
+    .blocked-toolbar { display: flex; justify-content: flex-end; margin-bottom: 0.9rem; }
+    .blocked-del {
+      flex: none;
+      width: 26px; height: 26px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      border: 1px solid rgba(224,82,110,0.35);
+      background: transparent;
+      color: #ff9db2;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+    .blocked-del:hover { background: rgba(217,79,116,0.15); border-color: #e0526e; }
     .blocked-empty {
       text-align: center; font-family: "Caveat", cursive; font-size: 1.4rem;
       color: var(--text-muted); padding: 2rem;
@@ -393,6 +408,12 @@
     </div>
 
     <section class="blocked-view" id="blocked-view" hidden>
+      <div class="blocked-toolbar">
+        <button type="button" class="icon-btn danger" id="clear-blocked-btn" hidden>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          Delete all
+        </button>
+      </div>
       <p class="blocked-empty" id="blocked-empty">No blocked attempts. The filter is lonely &#9829;</p>
       <div class="blocked-grid" id="blocked-grid"></div>
     </section>
@@ -429,6 +450,7 @@
     const blockedViewEl = document.getElementById('blocked-view');
     const blockedGrid = document.getElementById('blocked-grid');
     const blockedEmpty = document.getElementById('blocked-empty');
+    const clearBlockedBtn = document.getElementById('clear-blocked-btn');
     const statsStrip = document.getElementById('stats-strip');
     const searchInput = document.getElementById('search-input');
 
@@ -540,6 +562,7 @@
     async function loadBlocked() {
       blockedGrid.innerHTML = '';
       blockedEmpty.style.display = 'flex';
+      clearBlockedBtn.hidden = true;
       try {
         const res = await fetch('/admin/blocked', {
           headers: { 'x-admin-password': adminPassword }
@@ -549,6 +572,7 @@
         blockedLoaded = true;
         if (items.length === 0) return;
         blockedEmpty.style.display = 'none';
+        clearBlockedBtn.hidden = false;
         for (const item of items) {
           const card = document.createElement('div');
           card.className = 'blocked-card';
@@ -561,7 +585,14 @@
           const when = document.createElement('span');
           when.className = 'blocked-date';
           when.textContent = new Date(item.date).toLocaleString();
-          head.append(who, when);
+          const del = document.createElement('button');
+          del.type = 'button';
+          del.className = 'blocked-del';
+          del.title = 'Delete this attempt';
+          del.setAttribute('aria-label', 'Delete this blocked attempt');
+          del.textContent = '\u00D7';
+          del.addEventListener('click', () => deleteBlocked(item.id, card));
+          head.append(who, when, del);
 
           const route = document.createElement('div');
           route.className = 'blocked-route';
@@ -591,6 +622,42 @@
         showToast('Could not load blocked attempts.');
       }
     }
+
+    async function deleteBlocked(id, cardEl) {
+      try {
+        const res = await fetch(`/admin/blocked/${id}`, {
+          method: 'DELETE',
+          headers: { 'x-admin-password': adminPassword }
+        });
+        if (!res.ok) throw new Error();
+        cardEl.remove();
+        if (!blockedGrid.querySelector('.blocked-card')) {
+          blockedGrid.innerHTML = '';
+          blockedEmpty.style.display = 'flex';
+          clearBlockedBtn.hidden = true;
+        }
+        showToast('Attempt deleted');
+      } catch {
+        showToast('Delete failed.');
+      }
+    }
+
+    clearBlockedBtn.addEventListener('click', async () => {
+      if (!confirm('Delete ALL blocked attempts? This cannot be undone.')) return;
+      try {
+        const res = await fetch('/admin/blocked', {
+          method: 'DELETE',
+          headers: { 'x-admin-password': adminPassword }
+        });
+        if (!res.ok) throw new Error();
+        blockedGrid.innerHTML = '';
+        blockedEmpty.style.display = 'flex';
+        clearBlockedBtn.hidden = true;
+        showToast('All attempts cleared');
+      } catch {
+        showToast('Clear failed.');
+      }
+    });
 
     viewLettersBtn.addEventListener('click', () => switchView('letters'));
     viewBlockedBtn.addEventListener('click', () => switchView('blocked'));
@@ -713,6 +780,7 @@
       adminPassword = '';
       blockedLoaded = false;
       blockedGrid.innerHTML = '';
+      clearBlockedBtn.hidden = true;
       tabsEl.innerHTML = '';
       bigLetter.hidden = true;
       saveBtn.disabled = true;
