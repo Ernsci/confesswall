@@ -781,7 +781,7 @@
       showToast('Rendering your square letter \u2665');
 
       try {
-        const raw = await renderLetterCanvas(confessions[selected]);
+        const raw = await LetterArt.renderLetterCanvas(confessions[selected]);
 
                 const out = LetterArt.composeSquare(raw);
 
