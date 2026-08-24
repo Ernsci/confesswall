@@ -7,7 +7,7 @@ module.exports = {
   blockedLogCapPerHour: 20,
   blockedRetentionDays: 14,
   fuzzyEnabled: true,
-  fuzzyMinLen: 7,
+  fuzzyMinLen: 6,
 
   badWords: {
     english: [
@@ -30,18 +30,18 @@ module.exports = {
       "faggot", "faggots", "dyke", "dykes", "tranny", "trannies",
       "chink", "chinks", "gook", "gooks", "wetback", "wetbacks",
       "retard", "retards", "retarded",
-      "damn", "dammit" , "secret"
+      "damn", "dammit"
     ],
 
     tagalog: [
       "putang", "putang ina", "puta", "putangina", "tangina", "tang ina", "kingina",
-      "punyeta", "tanga", "gago", "gaga", "tarantado", "inutil", "ungas", "ulol",
+      "punyeta", "tanga", "gago", "tarantado", "inutil", "ungas", "ulol",
       "buwisit", "bwisit", "lintik", "shunga", "amputa",
       "sira ulo", "siraulo", "walang hiya", "walanghiya", "hayop ka",
       "ulupong", "haliparot", "malandi", "manyak", "libog", "bastos",
       "kantot", "kantutan", "kantutin", "kinantot", "jakol", "jabol", "chupa",
       "tamod", "bayag", "etits", "titi", "utoy",
-      "puke", "puked", "puking", "pekpek", "puki", "burat"
+      "puke", "pekpek", "puki", "burat"
     ],
 
     bisaya: [
@@ -51,6 +51,7 @@ module.exports = {
   },
 
   exactOnly: [
-    "raped", "raping", "rapist", "cumming", "nudes", "horny", "prick", "bilat"
+    "raped", "raping", "rapist", "cumming", "nudes", "horny", "prick", "bilat",
+    "secret"
   ]
 };

@@ -96,6 +96,11 @@ for (const raw of Object.values(config.badWords).flat()) {
   }
 }
 
+// exact-only entries live outside badWords — load them too
+for (const word of exactOnly) {
+  if (word) strictWords.add(word);
+}
+
 function stripSuffixes(word) {
   let current = word;
   let previous;
@@ -111,25 +116,31 @@ function stripSuffixes(word) {
   return current;
 }
 
+// distance-1 match WITHOUT pure substitutions — those caused false flags
+// (texting≈sexting, ducking≈fucking, ranking≈wanking). We only accept:
+//  - adjacent transposition ("asshloe" ≈ "asshole")
+//  - one inserted/deleted letter ("fcking" ≈ "fucking")
 function withinOneEdit(a, b) {
-  if (Math.abs(a.length - b.length) > 1) return false;
-  let i = 0, j = 0, edits = 0;
-  while (i < a.length && j < b.length) {
-    if (a[i] === b[j]) { i++; j++; continue; }
-    if (++edits > 1) return false;
-    // treat adjacent transposition as a single edit
-    if (
-      i + 1 < a.length && j + 1 < b.length &&
-      a[i] === b[j + 1] && a[i + 1] === b[j]
-    ) {
-      i += 2; j += 2; continue;
-    }
-    if (a.length === b.length) { i++; j++; }
-    else if (a.length > b.length) i++;
-    else j++;
+  const la = a.length, lb = b.length;
+  if (Math.abs(la - lb) > 1) return false;
+
+  if (la === lb) {
+    let i = 0;
+    while (i < la && a[i] === b[i]) i++;
+    if (i === la) return false; // identical handled elsewhere
+    return a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2);
   }
-  edits += a.length - i + b.length - j;
-  return edits <= 1;
+
+  const longer = la > lb ? a : b;
+  const shorter = la > lb ? b : a;
+  let i = 0, j = 0, skipped = false;
+  while (i < longer.length && j < shorter.length) {
+    if (longer[i] === shorter[j]) { i++; j++; continue; }
+    if (skipped) return false;
+    skipped = true;
+    i++;
+  }
+  return true;
 }
 
 // returns the list of matched terms (may be empty)
@@ -302,7 +313,12 @@ app.post("/api/confess", async (req, res) => {
 
   if (matchedWords.length > 0) {
     logBlockedAttempt(thisHash, from, to, rawMessage, matchedWords);
-    return res.status(400).json({ success: false, error: config.blockedMessage });
+    const shown = matchedWords.slice(0, 3).map(w => `"${w}"`).join(", ");
+    const more = matchedWords.length > 3 ? ` (+${matchedWords.length - 3} more)` : "";
+    return res.status(400).json({
+      success: false,
+      error: `${config.blockedMessage} Flagged: ${shown}${more}.`
+    });
   }
 
   const nowDate = new Date();
