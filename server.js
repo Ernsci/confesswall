@@ -234,13 +234,6 @@ async function logBlockedAttempt(ipHash, from, to, message, matches) {
 }
 
 app.post("/api/confess", async (req, res) => {
-  if (!DISCORD_WEBHOOK_URL) {
-    return res.status(500).json({
-      success: false,
-      error: "Server is missing the Discord webhook configuration."
-    });
-  }
-
   const ip = getClientIp(req);
   const now = Date.now();
   const last = submissions.get(ip) || 0;
@@ -329,22 +322,24 @@ app.post("/api/confess", async (req, res) => {
     footer: { text: "Confess Wall" }
   };
 
-  try {
-    const response = await fetch(DISCORD_WEBHOOK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: "Confess Wall", embeds: [embed] })
-    });
+  // Discord delivery is now best-effort — Supabase is the source of truth.
+  if (DISCORD_WEBHOOK_URL) {
+    try {
+      const response = await fetch(DISCORD_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "Confess Wall", embeds: [embed] })
+      });
 
-    if (!response.ok) {
-      throw new Error(`Discord responded with status ${response.status}`);
+      if (!response.ok) {
+        const detail = await response.text().catch(() => "");
+        console.error(`Discord delivery failed (${response.status}): ${detail.slice(0, 200)}`);
+      }
+    } catch (err) {
+      console.error("Failed to send confession to Discord:", err.message);
     }
-  } catch (err) {
-    console.error("Failed to send confession:", err.message);
-    return res.status(502).json({
-      success: false,
-      error: "Could not deliver your confession right now. Please try again in a moment."
-    });
+  } else {
+    console.warn("DISCORD_WEBHOOK_URL is not set — skipping Discord delivery.");
   }
 
   submissions.set(ip, now);
